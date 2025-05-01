@@ -19,7 +19,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import { CheckCircle, AlertTriangle, BookOpen, Clock, Trophy, Target, TrendingUp, TrendingDown } from "lucide-react";
+import { CheckCircle, AlertTriangle, BookOpen, Clock, Trophy, Target, TrendingUp, TrendingDown, Clock3, CalendarDays } from "lucide-react";
 import ChessAdviser from './ChessAdviser';
 
 const CoachTab: React.FC<{ analysis: UserAnalysis }> = ({ analysis }) => {
@@ -65,6 +65,32 @@ const CoachTab: React.FC<{ analysis: UserAnalysis }> = ({ analysis }) => {
   const winRate = totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0;
   const drawRate = totalGames > 0 ? Math.round((totalDraws / totalGames) * 100) : 0;
   const lossRate = totalGames > 0 ? Math.round((totalLosses / totalGames) * 100) : 0;
+  
+  // Determine time-of-day performance insights
+  let timeInsight = "";
+  if (bestTimeSlot.slot === '16:00-19:59' && worstTimeSlot.slot === '12:00-15:59') {
+    timeInsight = "Performance indicates you play best after work hours when you can focus fully on chess.";
+  } else if (bestTimeSlot.slot === '20:00-23:59' && worstTimeSlot.slot === '04:00-07:59') {
+    timeInsight = "You're a night owl - your evening games show significantly better focus than morning sessions.";
+  } else if (bestTimeSlot.slot === '08:00-11:59' && worstTimeSlot.slot === '20:00-23:59') {
+    timeInsight = "Morning mental clarity benefits your play - consider scheduling important matches before noon.";
+  } else if (Math.abs(bestTimeSlot.winRate - worstTimeSlot.winRate) > 15) {
+    timeInsight = `A significant performance difference of ${Math.abs(bestTimeSlot.winRate - worstTimeSlot.winRate).toFixed(1)} percentage points between your best and worst time slots suggests scheduling important games strategically.`;
+  } else {
+    timeInsight = "Your performance is relatively consistent across different times of day.";
+  }
+  
+  // Determine day-of-week performance insights
+  let dayInsight = "";
+  if (bestDay.day === 'Wednesday' && worstDay.day === 'Sunday') {
+    dayInsight = "Midweek play seems optimal for your concentration; weekend games may require more preparation or rest.";
+  } else if ((bestDay.day === 'Saturday' || bestDay.day === 'Sunday') && (worstDay.day === 'Monday' || worstDay.day === 'Tuesday')) {
+    dayInsight = "Weekend play suits your style better than weekdays, perhaps due to reduced work pressure.";
+  } else if (Math.abs(bestDay.winRate - worstDay.winRate) > 12) {
+    dayInsight = `Consider the ${Math.abs(bestDay.winRate - worstDay.winRate).toFixed(1)} percentage point difference between your best and worst days when scheduling important matches.`;
+  } else {
+    dayInsight = "Your performance is fairly consistent throughout the week.";
+  }
   
   return (
     <div className="space-y-8">
@@ -208,117 +234,135 @@ const CoachTab: React.FC<{ analysis: UserAnalysis }> = ({ analysis }) => {
             </Card>
             
             {/* Add the Ask Me Anything Section */}
-            <ChessAdviser />
+            <ChessAdviser analysis={analysis} />
           </TabsContent>
           
           {/* Performance Content */}
-          <TabsContent value="performance" className="mt-6">
-            {/* Accuracy by Phase */}
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle>Accuracy by Phase</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={phaseData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis domain={[0, 100]} />
-                      <Tooltip 
-                        formatter={(value: any) => {
-                          if (typeof value === 'number') {
-                            return [`${value}%`, 'Accuracy'];
-                          }
-                          return [`${value}`, 'Accuracy'];
-                        }}
-                      />
-                      <Bar dataKey="value" fill="#9b87f5" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="performance" className="mt-6 space-y-8">
+            <h2 className="text-2xl font-bold mb-4">When You Play Matters</h2>
             
-            {/* Performance by Time */}
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle>Results by Time of Day</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="p-4 border rounded-md bg-chess-soft-bg">
-                    <h3 className="font-medium mb-2">Performance Insights</h3>
-                    <table className="min-w-full">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-2">Metric</th>
-                          <th className="text-left py-2">Best</th>
-                          <th className="text-left py-2">Worst</th>
-                          <th className="text-left py-2">Why it matters</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="border-b">
-                          <td className="py-2">Day of week</td>
-                          <td className="py-2">{bestDay.day} – {bestDay.winRate}% win-rate ({bestDay.wins}-{bestDay.losses}-{bestDay.draws} from {bestDay.games} games)</td>
-                          <td className="py-2">{worstDay.day} – {worstDay.winRate}% win-rate ({worstDay.wins}-{worstDay.losses}-{worstDay.draws})</td>
-                          <td className="py-2">A swing of {Math.abs(bestDay.winRate - worstDay.winRate).toFixed(1)} percentage points is {Math.abs(bestDay.winRate - worstDay.winRate) > 10 ? 'statistically meaningful' : 'worth noting'}</td>
-                        </tr>
-                        <tr>
-                          <td className="py-2">Time slot (4h)</td>
-                          <td className="py-2">{bestTimeSlot.slot} – {bestTimeSlot.winRate}% win-rate ({bestTimeSlot.games} games)</td>
-                          <td className="py-2">{worstTimeSlot.slot} – {worstTimeSlot.winRate}% win-rate ({worstTimeSlot.games} games)</td>
-                          <td className="py-2">{bestTimeSlot.slot === '12:00-15:59' && worstTimeSlot.slot === '20:00-23:59' ? 'Evening fatigue shows: you drop from solid midday performance in the evening' : 'Consider your energy levels during different times of day'}</td>
-                        </tr>
-                      </tbody>
-                    </table>
+            {/* Time of Day and Day of Week Analysis Cards */}
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Time of Day Analysis */}
+              <Card className="overflow-hidden">
+                <CardHeader className="pb-3 bg-blue-50/70 flex flex-row items-center gap-2">
+                  <Clock3 className="h-5 w-5 text-blue-600" />
+                  <CardTitle>Time of Day Analysis</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="bg-green-50 p-4 border-t border-b border-green-100">
+                    <h3 className="text-green-700 font-bold">Best Time Slot:</h3>
+                    <p className="text-lg font-bold mt-1">{bestTimeSlot.slot} – {bestTimeSlot.winRate}% win-rate</p>
+                    <p className="text-sm text-gray-600">({bestTimeSlot.games} games)</p>
                   </div>
-                  
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="h-72">
-                      <h3 className="text-lg font-medium mb-2">Win Rate by Day</h3>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={dayChartData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" />
-                          <YAxis domain={[0, 100]} />
-                          <Tooltip 
-                            formatter={(value: any) => {
-                              if (typeof value === 'number') {
-                                return [`${value}%`, 'Win Rate'];
-                              }
-                              return [`${value}`, 'Win Rate'];
-                            }}
-                          />
-                          <Bar dataKey="winRate" fill="#9b87f5" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                    
-                    <div className="h-72">
-                      <h3 className="text-lg font-medium mb-2">Win Rate by Time</h3>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={timeChartData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" />
-                          <YAxis domain={[0, 100]} />
-                          <Tooltip 
-                            formatter={(value: any) => {
-                              if (typeof value === 'number') {
-                                return [`${value}%`, 'Win Rate'];
-                              }
-                              return [`${value}`, 'Win Rate'];
-                            }}
-                          />
-                          <Line type="monotone" dataKey="winRate" stroke="#9b87f5" activeDot={{ r: 8 }} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
+                  <div className="bg-red-50 p-4 border-b border-red-100">
+                    <h3 className="text-red-700 font-bold">Worst Time Slot:</h3>
+                    <p className="text-lg font-bold mt-1">{worstTimeSlot.slot} – {worstTimeSlot.winRate}% win-rate</p>
+                    <p className="text-sm text-gray-600">({worstTimeSlot.games} games)</p>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                  <div className="p-4">
+                    <p className="text-gray-700 italic">{timeInsight}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Day of Week Analysis */}
+              <Card className="overflow-hidden">
+                <CardHeader className="pb-3 bg-blue-50/70 flex flex-row items-center gap-2">
+                  <CalendarDays className="h-5 w-5 text-blue-600" />
+                  <CardTitle>Day of Week Analysis</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="bg-green-50 p-4 border-t border-b border-green-100">
+                    <h3 className="text-green-700 font-bold">Best Day:</h3>
+                    <p className="text-lg font-bold mt-1">{bestDay.day} – {bestDay.winRate}% win-rate</p>
+                    <p className="text-sm text-gray-600">({bestDay.wins}-{bestDay.losses}-{bestDay.draws} from {bestDay.games} games)</p>
+                  </div>
+                  <div className="bg-red-50 p-4 border-b border-red-100">
+                    <h3 className="text-red-700 font-bold">Worst Day:</h3>
+                    <p className="text-lg font-bold mt-1">{worstDay.day} – {worstDay.winRate}% win-rate</p>
+                    <p className="text-sm text-gray-600">({worstDay.games} games)</p>
+                  </div>
+                  <div className="p-4">
+                    <p className="text-gray-700 italic">{dayInsight}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* Game Phase Accuracy */}
+            <div>
+              <h2 className="text-2xl font-bold mb-4">Game Phase Accuracy</h2>
+              <div className="grid md:grid-cols-3 gap-6 mb-3">
+                {phaseData.map((phase) => (
+                  <Card key={phase.name} className={`${
+                    phase.value > 75 ? 'border-green-300 bg-green-50/50' : 
+                    phase.value < 65 ? 'border-red-300 bg-red-50/50' : 
+                    'border-yellow-300 bg-yellow-50/50'
+                  }`}>
+                    <CardContent className="pt-6 text-center">
+                      <h3 className="text-lg font-medium">{phase.name}</h3>
+                      <p className={`text-4xl font-bold mt-2 ${
+                        phase.value > 75 ? 'text-green-700' : 
+                        phase.value < 65 ? 'text-red-700' : 
+                        'text-yellow-700'
+                      }`}>{phase.value}%</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              <p className="text-gray-700 italic mt-4">
+                {phaseData[0].value > phaseData[1].value && phaseData[0].value > phaseData[2].value ? 
+                  "Strong openings but middlegame phase is a key area for targeted improvement." :
+                phaseData[2].value > phaseData[0].value && phaseData[2].value > phaseData[1].value ?
+                  "Your endgame technique is exceptional - focus on translating your opening positions into endgame advantages." :
+                  "Your middlegame understanding is your strength - consider studying opening theory to reach favorable middlegames more often."
+                }
+              </p>
+            </div>
+            
+            {/* Performance Charts Section */}
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="h-72">
+                <h3 className="text-lg font-medium mb-2">Win Rate by Day</h3>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dayChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis domain={[0, 100]} />
+                    <Tooltip 
+                      formatter={(value: any) => {
+                        if (typeof value === 'number') {
+                          return [`${value}%`, 'Win Rate'];
+                        }
+                        return [`${value}`, 'Win Rate'];
+                      }}
+                    />
+                    <Bar dataKey="winRate" fill="#9b87f5" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              
+              <div className="h-72">
+                <h3 className="text-lg font-medium mb-2">Win Rate by Time</h3>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={timeChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis domain={[0, 100]} />
+                    <Tooltip 
+                      formatter={(value: any) => {
+                        if (typeof value === 'number') {
+                          return [`${value}%`, 'Win Rate'];
+                        }
+                        return [`${value}`, 'Win Rate'];
+                      }}
+                    />
+                    <Line type="monotone" dataKey="winRate" stroke="#9b87f5" activeDot={{ r: 8 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
             
             {/* Material Advantage & Conversion */}
             <div className="grid md:grid-cols-2 gap-6">
@@ -366,6 +410,18 @@ const CoachTab: React.FC<{ analysis: UserAnalysis }> = ({ analysis }) => {
                     </div>
                     <p className="text-sm text-muted-foreground">
                       Success rate when +2 pawns ahead at move 30
+                    </p>
+                    <p className={`mt-4 ${
+                      (analysis.conversionRate || 0) > 75 ? 'text-green-600' : 
+                      (analysis.conversionRate || 0) < 65 ? 'text-red-600' : 
+                      'text-amber-600'
+                    }`}>
+                      {(analysis.conversionRate || 0) > 75 ? 
+                        "Excellent conversion - you consistently capitalize on advantages" : 
+                        (analysis.conversionRate || 0) < 65 ? 
+                        "Consider studying endgame techniques to improve your conversion rate" :
+                        "Decent conversion rate with room for improvement"
+                      }
                     </p>
                   </div>
                 </CardContent>
