@@ -236,7 +236,13 @@ const CoachTab: React.FC<{ analysis: UserAnalysis }> = ({ analysis }) => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="move" />
                   <YAxis />
-                  <Tooltip formatter={(value) => [`${value > 0 ? '+' : ''}${value.toFixed(1)} pawns`, 'Material']} />
+                  <Tooltip 
+                    formatter={(value: number | string) => {
+                      // Ensure value is treated as a number before operations
+                      const numValue = typeof value === 'number' ? value : parseFloat(value as string);
+                      return [`${numValue > 0 ? '+' : ''}${numValue.toFixed(1)} pawns`, 'Material'];
+                    }}
+                  />
                   <Line 
                     type="monotone" 
                     dataKey="value" 
