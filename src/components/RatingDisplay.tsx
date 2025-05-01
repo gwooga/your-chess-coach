@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { Trophy } from "lucide-react";
 import { Rating, ChessVariant } from '@/utils/types';
+import { Zap, Clock, Rocket } from "lucide-react";
 
 interface RatingDisplayProps {
   ratings: Rating;
@@ -11,15 +12,19 @@ interface RatingDisplayProps {
 const RatingDisplay: React.FC<RatingDisplayProps> = ({ ratings, variant }) => {
   // Get the category icon and rating
   const getRatingInfo = (type: string) => {
-    let icon = <Trophy className="size-6" />;
+    let icon;
     let rating = 'N/A';
     
-    if (type === 'blitz' && ratings.blitz) {
-      rating = ratings.blitz.toString();
-    } else if (type === 'rapid' && ratings.rapid) {
-      rating = ratings.rapid.toString();
-    } else if (type === 'bullet' && ratings.bullet) {
-      rating = ratings.bullet.toString();
+    // Set appropriate icon based on game type
+    if (type === 'blitz') {
+      icon = <Zap className="size-6 text-blue-600" />;
+      rating = ratings.blitz?.toString() || 'N/A';
+    } else if (type === 'rapid') {
+      icon = <Clock className="size-6 text-green-600" />;
+      rating = ratings.rapid?.toString() || 'N/A';
+    } else if (type === 'bullet') {
+      icon = <Rocket className="size-6 text-red-600" />;
+      rating = ratings.bullet?.toString() || 'N/A';
     }
     
     return { icon, rating };

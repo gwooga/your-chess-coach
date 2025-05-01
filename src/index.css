@@ -133,6 +133,31 @@
   animation: piece-move 0.3s ease-in-out;
 }
 
+/* Custom colors */
+.text-chess-win {
+  @apply text-green-600 font-medium;
+}
+
+.text-chess-draw {
+  @apply text-amber-600 font-medium;
+}
+
+.text-chess-loss {
+  @apply text-red-600 font-medium;
+}
+
+.chess-purple {
+  color: #9b87f5;
+}
+
+.chess-dark {
+  color: #1A1F2C;
+}
+
+.chess-soft-bg {
+  background-color: #F1F0FB;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

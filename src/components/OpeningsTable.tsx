@@ -83,7 +83,7 @@ const OpeningsTable: React.FC<OpeningsTableProps> = ({ data, title, totalGames }
             <TableRow key={index}>
               <TableCell className="font-medium">{opening.name}</TableCell>
               <TableCell className="font-mono text-xs">{opening.sequence}</TableCell>
-              <TableCell>{opening.games} ({opening.gamesPercentage}%)</TableCell>
+              <TableCell>{opening.gamesPercentage}%</TableCell>
               <TableCell>
                 <span className="text-chess-win">{opening.winsPercentage}%</span>
               </TableCell>

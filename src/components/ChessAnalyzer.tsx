@@ -13,7 +13,7 @@ const ChessAnalyzer: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [userAnalysis, setUserAnalysis] = useState<UserAnalysis | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>('last30');
-  const [activeTab, setActiveTab] = useState<ChessVariant>('all');
+  const [activeTab, setActiveTab] = useState<string>("coach");
   
   const handleUserSubmit = async (info: UserInfo) => {
     setIsLoading(true);
@@ -72,20 +72,20 @@ const ChessAnalyzer: React.FC = () => {
             </Select>
           </div>
           
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ChessVariant)}>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid grid-cols-5 mb-8">
-              <TabsTrigger value="all">Coach</TabsTrigger>
+              <TabsTrigger value="coach">Coach</TabsTrigger>
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="blitz">Blitz</TabsTrigger>
               <TabsTrigger value="rapid">Rapid</TabsTrigger>
               <TabsTrigger value="bullet">Bullet</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="all" className="first-of-type:mt-0">
+            <TabsContent value="coach" className="mt-0">
               <CoachTab analysis={userAnalysis} />
             </TabsContent>
             
-            <TabsContent value="all" className="mt-0 not-first-of-type:mt-0">
+            <TabsContent value="all" className="mt-0">
               <OpeningsTab 
                 data={userAnalysis.openings.all} 
                 variant="all" 
