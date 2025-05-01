@@ -152,7 +152,7 @@ const CoachTab: React.FC<{ analysis: UserAnalysis }> = ({ analysis }) => {
                       <div>
                         <h2 className="text-xl font-bold mb-2">Coach Analysis</h2>
                         <p className="text-gray-700 leading-relaxed">
-                          {analysis.username || "Player"}, over the past 90 days, your gameplay demonstrates a solid foundation with a promising win rate of {winRate}%. 
+                          Over the past 90 days, your gameplay demonstrates a solid foundation with a promising win rate of {winRate}%. 
                           Your strengths lie notably in your opening knowledge, particularly with the Sicilian Defense and the Queen's Gambit Declined, 
                           where you manage to gain early positional advantages. You exhibit strong tactical alertness, frequently leveraging forks and pins effectively, 
                           and you demonstrate strategic patience in the middlegame by maintaining control over key central squares and executing well-timed pawn breaks. 
@@ -221,7 +221,14 @@ const CoachTab: React.FC<{ analysis: UserAnalysis }> = ({ analysis }) => {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
                       <YAxis domain={[0, 100]} />
-                      <Tooltip formatter={(value) => [`${value}%`, 'Accuracy']} />
+                      <Tooltip 
+                        formatter={(value: any) => {
+                          if (typeof value === 'number') {
+                            return [`${value}%`, 'Accuracy'];
+                          }
+                          return [`${value}`, 'Accuracy'];
+                        }}
+                      />
                       <Bar dataKey="value" fill="#9b87f5" />
                     </BarChart>
                   </ResponsiveContainer>
@@ -252,7 +259,7 @@ const CoachTab: React.FC<{ analysis: UserAnalysis }> = ({ analysis }) => {
                           <td className="py-2">Day of week</td>
                           <td className="py-2">{bestDay.day} – {bestDay.winRate}% win-rate ({bestDay.wins}-{bestDay.losses}-{bestDay.draws} from {bestDay.games} games)</td>
                           <td className="py-2">{worstDay.day} – {worstDay.winRate}% win-rate ({worstDay.wins}-{worstDay.losses}-{worstDay.draws})</td>
-                          <td className="py-2">A swing of +{(bestDay.winRate - worstDay.winRate).toFixed(1)} percentage points is {Math.abs(bestDay.winRate - worstDay.winRate) > 10 ? 'statistically meaningful' : 'worth noting'}</td>
+                          <td className="py-2">A swing of {Math.abs(bestDay.winRate - worstDay.winRate).toFixed(1)} percentage points is {Math.abs(bestDay.winRate - worstDay.winRate) > 10 ? 'statistically meaningful' : 'worth noting'}</td>
                         </tr>
                         <tr>
                           <td className="py-2">Time slot (4h)</td>
@@ -272,7 +279,14 @@ const CoachTab: React.FC<{ analysis: UserAnalysis }> = ({ analysis }) => {
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="name" />
                           <YAxis domain={[0, 100]} />
-                          <Tooltip formatter={(value) => [`${value}%`, 'Win Rate']} />
+                          <Tooltip 
+                            formatter={(value: any) => {
+                              if (typeof value === 'number') {
+                                return [`${value}%`, 'Win Rate'];
+                              }
+                              return [`${value}`, 'Win Rate'];
+                            }}
+                          />
                           <Bar dataKey="winRate" fill="#9b87f5" />
                         </BarChart>
                       </ResponsiveContainer>
@@ -285,7 +299,14 @@ const CoachTab: React.FC<{ analysis: UserAnalysis }> = ({ analysis }) => {
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="name" />
                           <YAxis domain={[0, 100]} />
-                          <Tooltip formatter={(value) => [`${value}%`, 'Win Rate']} />
+                          <Tooltip 
+                            formatter={(value: any) => {
+                              if (typeof value === 'number') {
+                                return [`${value}%`, 'Win Rate'];
+                              }
+                              return [`${value}`, 'Win Rate'];
+                            }}
+                          />
                           <Line type="monotone" dataKey="winRate" stroke="#9b87f5" activeDot={{ r: 8 }} />
                         </LineChart>
                       </ResponsiveContainer>
@@ -311,10 +332,11 @@ const CoachTab: React.FC<{ analysis: UserAnalysis }> = ({ analysis }) => {
                         <XAxis dataKey="move" />
                         <YAxis />
                         <Tooltip 
-                          formatter={(value: number | string) => {
-                            // Ensure value is treated as a number before operations
-                            const numValue = typeof value === 'number' ? value : parseFloat(value as string);
-                            return [`${numValue > 0 ? '+' : ''}${numValue.toFixed(1)} pawns`, 'Material'];
+                          formatter={(value: any) => {
+                            if (typeof value === 'number') {
+                              return [`${value > 0 ? '+' : ''}${value.toFixed(1)} pawns`, 'Material'];
+                            }
+                            return [`${value}`, 'Material'];
                           }}
                         />
                         <Line 
@@ -336,7 +358,7 @@ const CoachTab: React.FC<{ analysis: UserAnalysis }> = ({ analysis }) => {
                 <CardContent className="pt-0 flex flex-col items-center justify-center h-64">
                   <div className="text-center">
                     <div className="text-4xl font-bold text-chess-purple mb-2">
-                      {analysis.conversionRate?.toFixed(1)}%
+                      {analysis.conversionRate ? analysis.conversionRate.toFixed(1) : 'N/A'}%
                     </div>
                     <p className="text-sm text-muted-foreground">
                       Success rate when +2 pawns ahead at move 30
