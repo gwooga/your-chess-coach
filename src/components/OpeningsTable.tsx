@@ -54,6 +54,13 @@ const OpeningsTable: React.FC<OpeningsTableProps> = ({ data, title, totalGames }
       return bValue - aValue;
     }
   });
+
+  // Create a properly formatted Lichess URL
+  const getLichessUrl = (fen: string, side: string): string => {
+    // Replace spaces with underscores for the URL
+    const formattedFen = fen.replace(/ /g, '_');
+    return `https://lichess.org/editor/${formattedFen}?color=${side}`;
+  };
   
   return (
     <div className="my-4 overflow-x-auto">
@@ -103,7 +110,7 @@ const OpeningsTable: React.FC<OpeningsTableProps> = ({ data, title, totalGames }
                       <ChessBoard fen={opening.fen} side={title.includes('White') ? 'white' : 'black'} />
                       <div className="mt-2 text-center">
                         <a 
-                          href={`https://lichess.org/editor/${opening.fen.replace(/ /g, '_')}?color=${title.includes('White') ? 'white' : 'black'}`} 
+                          href={getLichessUrl(opening.fen, title.includes('White') ? 'white' : 'black')} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="text-sm text-chess-purple hover:underline"

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import RatingDisplay from './RatingDisplay';
-import { UserAnalysis, DayPerformance, TimeSlotPerformance } from '@/utils/types';
+import { UserAnalysis } from '@/utils/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   LineChart,
@@ -20,6 +20,7 @@ import {
   Cell
 } from 'recharts';
 import { CheckCircle, AlertTriangle, BookOpen, Clock, Trophy, Target, TrendingUp, TrendingDown } from "lucide-react";
+import ChessAdviser from './ChessAdviser';
 
 const CoachTab: React.FC<{ analysis: UserAnalysis }> = ({ analysis }) => {
   const [activeSection, setActiveSection] = useState<string>("summary");
@@ -205,6 +206,9 @@ const CoachTab: React.FC<{ analysis: UserAnalysis }> = ({ analysis }) => {
                 </div>
               </CardContent>
             </Card>
+            
+            {/* Add the Ask Me Anything Section */}
+            <ChessAdviser />
           </TabsContent>
           
           {/* Performance Content */}
