@@ -340,10 +340,11 @@ const extractInsights = (data: any): string[] => {
   
   // Time-of-day insights
   const timePerformance = data.timePerformance;
+  // Find best and worst time slots
   const bestTimeSlot = [...timePerformance].sort((a, b) => b.winRate - a.winRate)[0];
   const worstTimeSlot = [...timePerformance].sort((a, b) => a.winRate - b.winRate)[0];
   
-  if (bestTimeSlot.games > 10 && worstTimeSlot.games > 10) {
+  if (bestTimeSlot && worstTimeSlot && bestTimeSlot.games > 10 && worstTimeSlot.games > 10) {
     const diff = bestTimeSlot.winRate - worstTimeSlot.winRate;
     if (diff > 15) {
       insights.push(`You perform ${diff.toFixed(1)}% better during ${bestTimeSlot.slot} compared to ${worstTimeSlot.slot}. Consider scheduling important games in your stronger time slot.`);
@@ -352,10 +353,11 @@ const extractInsights = (data: any): string[] => {
   
   // Day-of-week insights
   const dayPerformance = data.dayPerformance;
+  // Find best and worst days
   const bestDay = [...dayPerformance].sort((a, b) => b.winRate - a.winRate)[0];
   const worstDay = [...dayPerformance].sort((a, b) => a.winRate - b.winRate)[0];
   
-  if (bestDay.games > 10 && worstDay.games > 10) {
+  if (bestDay && worstDay && bestDay.games > 10 && worstDay.games > 10) {
     insights.push(`Your strongest day is ${bestDay.day} (${bestDay.winRate}% win rate), while your most challenging is ${worstDay.day} (${worstDay.winRate}% win rate).`);
   }
   
@@ -388,7 +390,9 @@ const extractInsights = (data: any): string[] => {
       .filter(([key]) => key !== 'totalGames')
       .reduce((a, b) => a[1] < b[1] ? a : b);
     
-    insights.push(`Your ${strongest[0]} is your strongest phase at ${strongest[1]}% accuracy, while your ${weakest[0]} could use improvement at ${weakest[1]}%.`);
+    if (strongest && weakest) {
+      insights.push(`Your ${strongest[0]} is your strongest phase at ${strongest[1]}% accuracy, while your ${weakest[0]} could use improvement at ${weakest[1]}%.`);
+    }
   }
   
   // Additional insights as needed
@@ -530,6 +534,14 @@ export const analyzeChessData = async (userInfo: UserInfo, timeRange: TimeRange)
     // Generate time analysis
     const { dayPerformance, timePerformance } = generateTimeAnalysis(games, isChessCom);
     
+    // Find best and worst time slots for later use
+    const bestTimeSlot = [...timePerformance].sort((a, b) => b.winRate - a.winRate)[0];
+    const worstTimeSlot = [...timePerformance].sort((a, b) => a.winRate - b.winRate)[0];
+    
+    // Find best and worst days for later use
+    const bestDay = [...dayPerformance].sort((a, b) => b.winRate - a.winRate)[0];
+    const worstDay = [...dayPerformance].sort((a, b) => a.winRate - b.winRate)[0];
+    
     // Add insights to the openings data
     const openingInsights = extractInsights({
       timePerformance,
@@ -599,24 +611,24 @@ export const analyzeChessData = async (userInfo: UserInfo, timeRange: TimeRange)
       `Strong ${phaseAccuracy.opening > phaseAccuracy.middlegame && phaseAccuracy.opening > phaseAccuracy.endgame ? 
         'opening' : (phaseAccuracy.middlegame > phaseAccuracy.endgame ? 'middlegame' : 'endgame')} play`,
       randomStrength[Math.floor(Math.random() * randomStrength.length)],
-      `Consistent performance during ${bestTimeSlot.slot} time period`,
-      `Strong results on ${bestDay.day}`
+      bestTimeSlot ? `Consistent performance during ${bestTimeSlot.slot} time period` : "Consistent performance throughout the day",
+      bestDay ? `Strong results on ${bestDay.day}` : "Balanced performance across the week"
     ];
     
     const weaknesses = [
       `Weaker ${phaseAccuracy.opening < phaseAccuracy.middlegame && phaseAccuracy.opening < phaseAccuracy.endgame ? 
         'opening' : (phaseAccuracy.middlegame < phaseAccuracy.endgame ? 'middlegame' : 'endgame')} play`,
       randomWeakness[Math.floor(Math.random() * randomWeakness.length)],
-      `Below average performance during ${worstTimeSlot.slot} time period`,
-      `Poor results on ${worstDay.day}`
+      worstTimeSlot ? `Below average performance during ${worstTimeSlot.slot} time period` : "Inconsistent performance throughout the day",
+      worstDay ? `Poor results on ${worstDay.day}` : "Inconsistent performance throughout the week"
     ];
     
     const recommendations = [
       `Focus on improving ${phaseAccuracy.opening < phaseAccuracy.middlegame && phaseAccuracy.opening < phaseAccuracy.endgame ? 
         'opening' : (phaseAccuracy.middlegame < phaseAccuracy.endgame ? 'middlegame' : 'endgame')} technique`,
       "Practice tactical puzzles daily to reduce blunders",
-      `Schedule important matches during your peak performance time (${bestTimeSlot.slot})`,
-      `Consider taking a break from competitive play on ${worstDay.day}`
+      bestTimeSlot ? `Schedule important matches during your peak performance time (${bestTimeSlot.slot})` : "Try to identify your best playing time and schedule important games then",
+      worstDay ? `Consider taking a break from competitive play on ${worstDay.day}` : "Maintain a consistent playing schedule throughout the week"
     ];
     
     // Construct the final user analysis object
