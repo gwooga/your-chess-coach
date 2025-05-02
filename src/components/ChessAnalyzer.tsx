@@ -7,7 +7,7 @@ import CoachTab from './CoachTab';
 import OpeningsTab from './OpeningsTab';
 import { UserInfo, TimeRange, ChessVariant, UserAnalysis } from '@/utils/types';
 import { analyzeChessData } from '@/services/chessAnalysisService';
-import { downloadPGN } from '@/services/pgnDownloadService';
+import { downloadPGN, parsePgnContent } from '@/services/pgnDownloadService';
 import { Button } from "@/components/ui/button";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from '@/utils/ThemeProvider';
@@ -83,6 +83,68 @@ const ChessAnalyzer: React.FC = () => {
     }
   };
   
+  const handlePgnUpload = async (pgnContent: string) => {
+    setIsLoading(true);
+    setDownloadProgress(0);
+    
+    try {
+      toast({
+        title: "Processing PGN file",
+        description: "Parsing uploaded games...",
+      });
+      
+      // Parse the uploaded PGN content
+      const games = parsePgnContent(pgnContent);
+      
+      if (games.length === 0) {
+        toast({
+          title: "No games found",
+          description: "No valid games found in the uploaded PGN file",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      toast({
+        title: "Processing complete",
+        description: `Successfully processed ${games.length} games. Starting analysis...`,
+      });
+      
+      // Set a default user info for uploaded PGN
+      const uploadUserInfo = {
+        username: games[0]?.white?.username || games[0]?.black?.username || "PGN User",
+        platform: "uploaded" as Platform
+      };
+      
+      setUserInfo(uploadUserInfo);
+      setDownloadProgress(100);
+      
+      // Now analyze the data
+      const analysis = await analyzeChessData({ 
+        games, 
+        info: uploadUserInfo, 
+        timeRange: 'last90' 
+      });
+      
+      setUserAnalysis(analysis);
+      
+      toast({
+        title: "Analysis complete",
+        description: `Successfully analyzed ${games.length} games from your PGN file!`,
+      });
+    } catch (error) {
+      console.error("Failed to process or analyze PGN data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to process or analyze the PGN file. Please check the file format and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleTimeRangeChange = async (value: TimeRange) => {
     if (!userInfo) return;
     
@@ -120,7 +182,11 @@ const ChessAnalyzer: React.FC = () => {
       });
       
       // Now analyze the data
-      const analysis = await analyzeChessData({ games, info: userInfo, timeRange: value });
+      const analysis = await analyzeChessData({ 
+        games, 
+        info: userInfo, 
+        timeRange: value 
+      });
       setUserAnalysis(analysis);
       
       toast({
@@ -164,27 +230,37 @@ const ChessAnalyzer: React.FC = () => {
       )}
       
       {!userAnalysis ? (
-        <UserForm onSubmit={handleUserSubmit} isLoading={isLoading} />
+        <UserForm 
+          onSubmit={handleUserSubmit} 
+          onPgnUpload={handlePgnUpload}
+          isLoading={isLoading} 
+        />
       ) : (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h2 className="text-2xl font-bold">{userInfo?.username}'s Analysis</h2>
-              <p className="text-muted-foreground">Platform: {userInfo?.platform}</p>
+              <p className="text-muted-foreground">
+                {userInfo?.platform === "uploaded" 
+                  ? "From uploaded PGN file" 
+                  : `Platform: ${userInfo?.platform}`}
+              </p>
             </div>
             
             <div className="flex gap-2 items-center">
-              <Select value={timeRange} onValueChange={(value) => handleTimeRangeChange(value as TimeRange)}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Select time range" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="last30">Last 30 days</SelectItem>
-                  <SelectItem value="last90">Last 90 days</SelectItem>
-                  <SelectItem value="last180">Last 180 days</SelectItem>
-                  <SelectItem value="last365">Last 1 year</SelectItem>
-                </SelectContent>
-              </Select>
+              {userInfo?.platform !== "uploaded" && (
+                <Select value={timeRange} onValueChange={(value) => handleTimeRangeChange(value as TimeRange)}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Select time range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="last30">Last 30 days</SelectItem>
+                    <SelectItem value="last90">Last 90 days</SelectItem>
+                    <SelectItem value="last180">Last 180 days</SelectItem>
+                    <SelectItem value="last365">Last 1 year</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
               
               <Button variant="outline" size="icon" onClick={toggleTheme}>
                 {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}

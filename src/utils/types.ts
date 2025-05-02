@@ -1,5 +1,4 @@
-
-export type Platform = 'chess.com' | 'lichess';
+export type Platform = 'chess.com' | 'lichess' | 'uploaded';
 
 export type TimeRange = 'last30' | 'last90' | 'last180' | 'last365';
 
