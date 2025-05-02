@@ -28,17 +28,27 @@ export interface OpeningData {
   losses: number;
   lossesPercentage: number;
   fen: string;
+  score?: number; // Optional field for meaningful openings
 }
 
 export interface OpeningsTableData {
+  white2?: OpeningData[];
+  black2?: OpeningData[];
   white3: OpeningData[];
   black3: OpeningData[];
+  white4?: OpeningData[];
+  black4?: OpeningData[];
   white5: OpeningData[];
   black5: OpeningData[];
   white7: OpeningData[];
   black7: OpeningData[];
+  white10?: OpeningData[];
+  black10?: OpeningData[];
   totalWhiteGames: number;
   totalBlackGames: number;
+  meaningfulWhite?: OpeningData[];
+  meaningfulBlack?: OpeningData[];
+  insights?: string[];
 }
 
 export interface DayPerformance {
@@ -88,4 +98,5 @@ export interface UserAnalysis {
   strengths: string[];
   weaknesses: string[];
   recommendations: string[];
+  insights?: string[];
 }
