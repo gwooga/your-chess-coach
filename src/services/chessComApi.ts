@@ -65,20 +65,38 @@ export const fetchChessComGames = async (archiveUrl: string): Promise<any> => {
 // Filter archives based on time range
 const filterArchivesByTimeRange = (archives: string[], timeRange: TimeRange): string[] => {
   const now = new Date();
-  const monthsBack = timeRange === 'last30' ? 1 :
-                     timeRange === 'last90' ? 3 :
-                     timeRange === 'last180' ? 6 : 12;
   
-  const cutoffDate = new Date();
-  cutoffDate.setMonth(now.getMonth() - monthsBack);
+  // Calculate the correct date range based on selected option
+  let cutoffDate = new Date();
+  
+  if (timeRange === 'last30') {
+    // For last 30 days, go back 30 days from today
+    cutoffDate.setDate(now.getDate() - 30);
+  } else if (timeRange === 'last90') {
+    // For last 90 days, go back 90 days from today
+    cutoffDate.setDate(now.getDate() - 90);
+  } else if (timeRange === 'last180') {
+    // For last 180 days, go back 180 days from today
+    cutoffDate.setDate(now.getDate() - 180);
+  } else {
+    // For last 365 days, go back 365 days from today
+    cutoffDate.setDate(now.getDate() - 365);
+  }
   
   return archives.filter(archive => {
     // Chess.com archives format: .../YYYY/MM
     const parts = archive.split('/');
     const year = parseInt(parts[parts.length - 2]);
     const month = parseInt(parts[parts.length - 1]) - 1; // 0-based months
-    const archiveDate = new Date(year, month);
-    return archiveDate >= cutoffDate;
+    
+    // Get first day of the month for the archive
+    const archiveDate = new Date(year, month, 1);
+    
+    // Get last day of the month for proper comparison
+    const lastDayArchive = new Date(year, month + 1, 0);
+    
+    // If the last day of the month is after our cutoff, include this archive
+    return lastDayArchive >= cutoffDate;
   });
 };
 

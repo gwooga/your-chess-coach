@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import { Chess } from 'chess.js';
 
 interface ChessBoardProps {
   fen: string;
@@ -10,44 +11,41 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ fen, side = 'white' }) => {
   const [boardArray, setBoardArray] = useState<string[][]>([]);
   
   useEffect(() => {
-    // Parse FEN and get the position part
-    const fenParts = fen.split(' ');
-    const position = fenParts[0];
-    
-    // Split position by ranks
-    const ranks = position.split('/');
-    
-    // Process each rank and create a 2D array
-    const board: string[][] = [];
-    
-    ranks.forEach(rank => {
-      const row: string[] = [];
+    try {
+      // Try to use Chess.js to parse the FEN
+      const chess = new Chess(fen);
+      const board = chess.board();
       
-      for (let i = 0; i < rank.length; i++) {
-        const char = rank[i];
-        
-        if (isNaN(parseInt(char, 10))) {
-          // It's a piece
-          row.push(char);
-        } else {
-          // It's a number, add that many empty spaces
-          const emptySquares = parseInt(char, 10);
-          for (let j = 0; j < emptySquares; j++) {
-            row.push('');
-          }
-        }
+      // Process the board into a 2D array format we can display
+      const processedBoard = board.map(row => 
+        row.map(square => square ? (square.color + square.type) : '')
+      );
+      
+      setBoardArray(processedBoard);
+    } catch (error) {
+      console.error("Invalid FEN or parsing error:", error);
+      // Fall back to default position if there's an error
+      try {
+        const chess = new Chess();
+        const board = chess.board();
+        const processedBoard = board.map(row => 
+          row.map(square => square ? (square.color + square.type) : '')
+        );
+        setBoardArray(processedBoard);
+      } catch (fallbackError) {
+        console.error("Failed to use fallback board:", fallbackError);
+        // Use empty board as last resort
+        setBoardArray(Array(8).fill(Array(8).fill('')));
       }
-      
-      board.push(row);
-    });
-    
-    setBoardArray(board);
+    }
   }, [fen]);
   
   // Chess pieces mapping
   const getPieceImagePath = (piece: string): string => {
-    const color = piece.toLowerCase() === piece ? 'b' : 'w';
-    const type = piece.toLowerCase();
+    if (!piece) return '';
+    
+    const color = piece[0]; // 'w' or 'b'
+    const type = piece[1]; // 'p', 'r', 'n', 'b', 'q', 'k'
     
     // Map piece to its name
     switch (type) {
@@ -80,11 +78,13 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ fen, side = 'white' }) => {
   };
   
   const renderBoard = () => {
+    if (!boardArray.length) return null;
+    
     // Adjust the board based on the side to play
     const adjustedBoard = side === 'white' ? [...boardArray] : [...boardArray].reverse();
     
     return (
-      <div className="chess-board border border-gray-300 rounded overflow-hidden">
+      <div className="chess-board border border-gray-300 rounded overflow-hidden grid grid-cols-8">
         {adjustedBoard.map((row, rowIndex) => {
           const adjustedRow = side === 'white' ? [...row] : [...row].reverse();
           
@@ -99,7 +99,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ fen, side = 'white' }) => {
   };
 
   return (
-    <div className="w-full max-w-[300px]">
+    <div className="w-full max-w-[300px] mx-auto">
       {renderBoard()}
     </div>
   );

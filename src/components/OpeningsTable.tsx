@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   Table,
@@ -63,6 +62,35 @@ const OpeningsTable: React.FC<OpeningsTableProps> = ({ data, title, totalGames }
     return `https://lichess.org/editor/${formattedFen}?color=${side}`;
   };
   
+  const formatSequence = (sequence: string): string => {
+    // Replace number dot patterns (like "1.") with number dot space (like "1. ")
+    const formattedSequence = sequence
+      .replace(/(\d+)\.(\S)/g, '$1. $2') // Add space after number dot if missing
+      .replace(/\s+/g, ' ') // Normalize spaces
+      .trim();
+    
+    // Split the sequence into move pairs for better readability
+    const moveParts = formattedSequence.split(/(\d+\.\s)/g);
+    
+    let result = '';
+    for (let i = 0; i < moveParts.length; i++) {
+      // If this is a move number, add it and continue
+      if (moveParts[i].match(/\d+\.\s/)) {
+        result += moveParts[i];
+      } 
+      // If this is move content, add it and a line break after every complete move
+      else if (moveParts[i].trim()) {
+        result += moveParts[i];
+        // If this is a full move pair and not the last one, add a line break
+        if ((i + 2) < moveParts.length && moveParts[i+1] && moveParts[i+1].match(/\d+\.\s/)) {
+          result += '\n';
+        }
+      }
+    }
+    
+    return result;
+  };
+  
   return (
     <div className="my-4 overflow-x-auto border rounded-lg">
       <div 
@@ -92,7 +120,7 @@ const OpeningsTable: React.FC<OpeningsTableProps> = ({ data, title, totalGames }
             {sortedData.map((opening, index) => (
               <TableRow key={index}>
                 <TableCell className="font-medium">{opening.name}</TableCell>
-                <TableCell className="font-mono text-xs">{opening.sequence}</TableCell>
+                <TableCell className="font-mono text-xs">{formatSequence(opening.sequence)}</TableCell>
                 <TableCell>{opening.gamesPercentage}%</TableCell>
                 <TableCell>
                   <div className="w-full bg-gray-200 rounded-full h-2.5">

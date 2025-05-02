@@ -15,7 +15,7 @@ const ChessAnalyzer: React.FC = () => {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [userAnalysis, setUserAnalysis] = useState<UserAnalysis | null>(null);
-  const [timeRange, setTimeRange] = useState<TimeRange>('last30');
+  const [timeRange, setTimeRange] = useState<TimeRange>('last90'); // Changed default to 90 days
   const [activeTab, setActiveTab] = useState<string>("coach");
   const { theme, setTheme } = useTheme();
   

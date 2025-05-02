@@ -28,12 +28,19 @@ export const fetchLichessGames = async (
   try {
     // Calculate since parameter based on timeRange
     const now = new Date();
-    const monthsBack = timeRange === 'last30' ? 1 :
-                       timeRange === 'last90' ? 3 :
-                       timeRange === 'last180' ? 6 : 12;
     
-    const cutoffDate = new Date();
-    cutoffDate.setMonth(now.getMonth() - monthsBack);
+    // Calculate proper date cutoffs based on actual days rather than months
+    let cutoffDate = new Date();
+    if (timeRange === 'last30') {
+      cutoffDate.setDate(now.getDate() - 30);
+    } else if (timeRange === 'last90') {
+      cutoffDate.setDate(now.getDate() - 90);
+    } else if (timeRange === 'last180') {
+      cutoffDate.setDate(now.getDate() - 180);
+    } else {
+      cutoffDate.setDate(now.getDate() - 365);
+    }
+    
     const since = cutoffDate.getTime();
     
     // Construct the API URL with parameters
