@@ -1,6 +1,7 @@
+
 import { OpeningData, OpeningsTableData, DayPerformance, TimeSlotPerformance, PhaseAccuracy, MoveQuality, UserAnalysis, Rating, ChessVariant } from '@/utils/types';
 import { toast } from '@/hooks/use-toast';
-import { UserInfo, TimeRange } from '@/utils/types';
+import { UserInfo, TimeRange, Platform } from '@/utils/types';
 import { Chess } from 'chess.js';
 
 // Convert PGN moves to FEN
@@ -713,3 +714,81 @@ export const extractRatings = (games: any[], platform: Platform): Rating => {
     blitz: [] as any[],
     rapid: [] as any[],
   };
+  
+  // Process games based on platform
+  if (games.length > 0) {
+    if (platform === 'chess.com') {
+      // For chess.com, filter games by time control
+      games.forEach(game => {
+        const timeControl = game.time_control || '';
+        if (typeof timeControl === 'string') {
+          if (timeControl.includes('bullet') || (parseInt(timeControl) < 180)) {
+            variantGames.bullet.push(game);
+          } else if (timeControl.includes('blitz') || (parseInt(timeControl) >= 180 && parseInt(timeControl) <= 600)) {
+            variantGames.blitz.push(game);
+          } else if (timeControl.includes('rapid') || (parseInt(timeControl) > 600)) {
+            variantGames.rapid.push(game);
+          }
+        }
+      });
+      
+      // Extract most recent rating for each variant
+      if (variantGames.bullet.length > 0) {
+        const game = variantGames.bullet[0];
+        if (game.white && game.white.rating) {
+          ratings.bullet = parseInt(game.white.rating);
+        }
+      }
+      
+      if (variantGames.blitz.length > 0) {
+        const game = variantGames.blitz[0];
+        if (game.white && game.white.rating) {
+          ratings.blitz = parseInt(game.white.rating);
+        }
+      }
+      
+      if (variantGames.rapid.length > 0) {
+        const game = variantGames.rapid[0];
+        if (game.white && game.white.rating) {
+          ratings.rapid = parseInt(game.white.rating);
+        }
+      }
+    } else {
+      // For lichess, extract from players object
+      games.forEach(game => {
+        const variant = game.speed || 'blitz';
+        if (variant === 'bullet') {
+          variantGames.bullet.push(game);
+        } else if (variant === 'blitz') {
+          variantGames.blitz.push(game);
+        } else if (variant === 'rapid') {
+          variantGames.rapid.push(game);
+        }
+      });
+      
+      // Extract most recent rating for each variant
+      if (variantGames.bullet.length > 0) {
+        const game = variantGames.bullet[0];
+        if (game.players && game.players.white && game.players.white.rating) {
+          ratings.bullet = game.players.white.rating;
+        }
+      }
+      
+      if (variantGames.blitz.length > 0) {
+        const game = variantGames.blitz[0];
+        if (game.players && game.players.white && game.players.white.rating) {
+          ratings.blitz = game.players.white.rating;
+        }
+      }
+      
+      if (variantGames.rapid.length > 0) {
+        const game = variantGames.rapid[0];
+        if (game.players && game.players.white && game.players.white.rating) {
+          ratings.rapid = game.players.white.rating;
+        }
+      }
+    }
+  }
+  
+  return ratings;
+};
