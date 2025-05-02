@@ -5,16 +5,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Platform, UserInfo } from '@/utils/types';
+import { Platform, UserInfo, TimeRange } from '@/utils/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface UserFormProps {
-  onSubmit: (userInfo: UserInfo) => void;
+  onSubmit: (userInfo: UserInfo, timeRange: TimeRange) => void;
   isLoading: boolean;
 }
 
 const UserForm: React.FC<UserFormProps> = ({ onSubmit, isLoading }) => {
   const [username, setUsername] = useState('');
   const [platform, setPlatform] = useState<Platform>('chess.com');
+  const [timeRange, setTimeRange] = useState<TimeRange>('last90');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +28,7 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, isLoading }) => {
     onSubmit({
       username: username.trim(),
       platform,
-    });
+    }, timeRange);
   };
 
   return (
@@ -66,6 +68,24 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, isLoading }) => {
                 <Label htmlFor="lichess" className="cursor-pointer">Lichess</Label>
               </div>
             </RadioGroup>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="timeRange">Time Range</Label>
+            <Select
+              value={timeRange}
+              onValueChange={(value) => setTimeRange(value as TimeRange)}
+            >
+              <SelectTrigger id="timeRange" className="border-chess-purple/30">
+                <SelectValue placeholder="Select time range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="last30">Last 30 days</SelectItem>
+                <SelectItem value="last90">Last 90 days</SelectItem>
+                <SelectItem value="last180">Last 180 days</SelectItem>
+                <SelectItem value="last365">Last 1 year</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           
           <Button 

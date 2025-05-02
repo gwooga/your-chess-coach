@@ -1,8 +1,6 @@
 import { OpeningData, OpeningsTableData, DayPerformance, TimeSlotPerformance, PhaseAccuracy, MoveQuality, UserAnalysis, Rating, ChessVariant } from '@/utils/types';
-import { fetchChessComData } from './chessComApi';
-import { fetchLichessData } from './lichessApi';
-import { UserInfo, TimeRange } from '@/utils/types';
 import { toast } from '@/hooks/use-toast';
+import { UserInfo, TimeRange } from '@/utils/types';
 import { Chess } from 'chess.js';
 
 // Convert PGN moves to FEN
@@ -34,7 +32,7 @@ export const pgnToFen = (moves: string): string => {
 };
 
 // Extract opening sequences from games
-const extractOpeningSequences = (games: any[], isChessCom: boolean): Record<string, any> => {
+const extractOpeningSequences = (games: any[]): Record<string, any> => {
   const openingSequences: Record<string, any> = {
     white2: {},
     black2: {},
@@ -55,24 +53,22 @@ const extractOpeningSequences = (games: any[], isChessCom: boolean): Record<stri
   
   games.forEach(game => {
     // Extract the player's color and opponent
-    let playerColor, playerUsername;
+    let playerColor = 'white';
     
-    if (isChessCom) {
-      // Chess.com format
-      playerUsername = game.white.username.toLowerCase(); // Assume this is the player
-      playerColor = 'white';
-      
-      // If the player is actually black, adjust
-      if (game.black.username.toLowerCase() === playerUsername) {
+    // If the player username matches the black player, adjust color
+    if (game.black && game.black.username && game.white && game.white.username) {
+      // For Chess.com games
+      if (typeof game.black.username === 'string' && 
+          typeof game.white.username === 'string' &&
+          game.black.username.toLowerCase() === game.white.username.toLowerCase()) {
         playerColor = 'black';
       }
-    } else {
-      // Lichess format
-      playerUsername = game.players.white.user.name.toLowerCase(); // Assume this is the player
-      playerColor = 'white';
-      
-      // If the player is actually black, adjust
-      if (game.players.black.user.name.toLowerCase() === playerUsername) {
+    } else if (game.players) {
+      // For Lichess games
+      const whiteUser = game.players.white.user;
+      const blackUser = game.players.black.user;
+      if (whiteUser && blackUser && blackUser.name && whiteUser.name && 
+          blackUser.name.toLowerCase() === whiteUser.name.toLowerCase()) {
         playerColor = 'black';
       }
     }
@@ -85,12 +81,21 @@ const extractOpeningSequences = (games: any[], isChessCom: boolean): Record<stri
     }
     
     // Extract moves from the game
-    const moves = isChessCom ? game.pgn.split('\n\n').pop() : game.moves;
+    let moves;
+    if (game.pgn) {
+      // Chess.com format
+      moves = game.pgn.split('\n\n').pop();
+    } else if (typeof game.moves === 'string') {
+      // Lichess moves in string format
+      moves = game.moves;
+    } else if (Array.isArray(game.moves)) {
+      // Moves in array format (our custom parser)
+      moves = game.moves.map((m: any) => m.san).join(' ');
+    }
     
     if (!moves) return;
     
     // Process the moves to extract opening sequences at different lengths
-    // In real implementation, we would parse the PGN properly to extract move sequences
     const movePairs = moves.split(/\d+\./).filter(Boolean);
     
     // Extract sequences of different depths
@@ -99,9 +104,18 @@ const extractOpeningSequences = (games: any[], isChessCom: boolean): Record<stri
         const sequenceMovePairs = movePairs.slice(0, depth).join(' ').trim();
         const sequenceKey = `${playerColor}${depth}`;
         
+        let openingName = 'Unknown Opening';
+        
+        // Try to get opening name
+        if (game.opening && game.opening.name) {
+          openingName = game.opening.name;
+        } else if (game.opening && typeof game.opening === 'string') {
+          openingName = game.opening;
+        }
+        
         if (!openingSequences[sequenceKey][sequenceMovePairs]) {
           openingSequences[sequenceKey][sequenceMovePairs] = {
-            name: isChessCom ? (game.opening?.name || 'Unknown Opening') : (game.opening?.name || 'Unknown Opening'),
+            name: openingName,
             sequence: sequenceMovePairs,
             games: 1,
             wins: game.result === 'win' ? 1 : 0,
@@ -233,7 +247,7 @@ const formatOpeningData = (sequences: Record<string, any>, depth: number, color:
 };
 
 // Generate day and time performance data
-const generateTimeAnalysis = (games: any[], isChessCom: boolean): { 
+const generateTimeAnalysis = (games: any[]): { 
   dayPerformance: DayPerformance[],
   timePerformance: TimeSlotPerformance[]
 } => {
@@ -261,30 +275,28 @@ const generateTimeAnalysis = (games: any[], isChessCom: boolean): {
   // Process each game
   games.forEach(game => {
     // Get game timestamp and result
-    let timestamp: number;
-    let result: 'win' | 'loss' | 'draw';
+    let timestamp: number = Date.now(); // Default to now
+    let result: 'win' | 'loss' | 'draw' = 'draw'; // Default
     
-    if (isChessCom) {
+    // Get timestamp
+    if (game.end_time) {
       // Chess.com format
       timestamp = game.end_time * 1000; // Convert to milliseconds
-      
-      // Determine result based on player color
-      const playerIsWhite = game.white.username.toLowerCase() === game.white.username.toLowerCase();
-      
-      if (game.white.result === 'win') {
-        result = playerIsWhite ? 'win' : 'loss';
-      } else if (game.black.result === 'win') {
-        result = playerIsWhite ? 'loss' : 'win';
-      } else {
-        result = 'draw';
-      }
-    } else {
+    } else if (game.createdAt) {
       // Lichess format
       timestamp = game.createdAt;
-      
-      // Determine result - simplified for demo
-      result = game.winner === 'white' ? 'win' : (game.winner === 'black' ? 'loss' : 'draw');
+    } else if (game.date) {
+      // Try to parse from date header
+      try {
+        const dateStr = game.date.replace(/\./g, '-');
+        timestamp = new Date(dateStr).getTime();
+      } catch (e) {
+        // Use default
+      }
     }
+    
+    // Get result
+    result = game.result || 'draw';
     
     // Create a date object
     const date = new Date(timestamp);
@@ -314,7 +326,7 @@ const generateTimeAnalysis = (games: any[], isChessCom: boolean): {
     timeSlotMap[timeSlot].games++;
     if (result === 'win') timeSlotMap[timeSlot].wins++;
     else if (result === 'draw') timeSlotMap[timeSlot].draws++;
-    else timeSlotMap[timeSlot].losses++;
+    else if (result === 'loss') timeSlotMap[timeSlot].losses++;
   });
   
   // Calculate win rates
@@ -404,19 +416,13 @@ const extractInsights = (data: any): string[] => {
 };
 
 // Main function to analyze chess data
-export const analyzeChessData = async (userInfo: UserInfo, timeRange: TimeRange): Promise<UserAnalysis> => {
+export const analyzeChessData = async (data: {
+  games: any[];
+  info: UserInfo;
+  timeRange: TimeRange;
+}): Promise<UserAnalysis> => {
   try {
-    let data;
-    
-    // Fetch data from the appropriate platform
-    if (userInfo.platform === 'chess.com') {
-      data = await fetchChessComData(userInfo, timeRange);
-    } else {
-      data = await fetchLichessData(userInfo, timeRange);
-    }
-    
-    const isChessCom = userInfo.platform === 'chess.com';
-    const games = isChessCom ? data.games : data.games;
+    const { games, info } = data;
     
     // Ensure we have actual games to analyze
     if (!games || games.length === 0) {
@@ -425,20 +431,42 @@ export const analyzeChessData = async (userInfo: UserInfo, timeRange: TimeRange)
     
     console.log(`Found ${games.length} games for analysis`);
     
-    // Extract ratings
+    // Extract ratings - initially set as empty
     let ratings: Rating = {};
-    if (isChessCom) {
-      if (data.stats?.chess_bullet) ratings.bullet = data.stats.chess_bullet.last.rating;
-      if (data.stats?.chess_blitz) ratings.blitz = data.stats.chess_blitz.last.rating;
-      if (data.stats?.chess_rapid) ratings.rapid = data.stats.chess_rapid.last.rating;
-    } else {
-      if (data.profile?.perfs?.bullet) ratings.bullet = data.profile.perfs.bullet.rating;
-      if (data.profile?.perfs?.blitz) ratings.blitz = data.profile.perfs.blitz.rating;
-      if (data.profile?.perfs?.rapid) ratings.rapid = data.profile.perfs.rapid.rating;
+    
+    // Try to extract ratings from the games
+    if (games.length > 0) {
+      const recentGame = games[0];
+      
+      if (info.platform === 'chess.com') {
+        // For Chess.com, try to determine from game time control
+        if (recentGame.time_control) {
+          const timeControl = recentGame.time_control.toLowerCase();
+          if (timeControl.includes('bullet')) {
+            ratings.bullet = parseInt(recentGame.white.rating);
+          } else if (timeControl.includes('blitz')) {
+            ratings.blitz = parseInt(recentGame.white.rating);
+          } else if (timeControl.includes('rapid')) {
+            ratings.rapid = parseInt(recentGame.white.rating);
+          }
+        }
+      } else {
+        // For Lichess, try to get from the players object
+        if (recentGame.players && recentGame.players.white && recentGame.players.white.rating) {
+          const variant = recentGame.speed || 'blitz';
+          if (variant === 'bullet') {
+            ratings.bullet = recentGame.players.white.rating;
+          } else if (variant === 'blitz') {
+            ratings.blitz = recentGame.players.white.rating;
+          } else if (variant === 'rapid') {
+            ratings.rapid = recentGame.players.white.rating;
+          }
+        }
+      }
     }
     
     // Extract opening data
-    const { sequences, totalWhiteGames, totalBlackGames } = extractOpeningSequences(games, isChessCom);
+    const { sequences, totalWhiteGames, totalBlackGames } = extractOpeningSequences(games);
     
     // Find meaningful openings
     const { meaningfulWhite, meaningfulBlack } = findMeaningfulOpenings(sequences, totalWhiteGames, totalBlackGames);
@@ -499,71 +527,68 @@ export const analyzeChessData = async (userInfo: UserInfo, timeRange: TimeRange)
       }
     };
     
-    // Fix for the openingsData by splitting games by variant
-    // This would be more accurate with real data, but for now we'll generate reasonable data
+    // Split games by time control for variant-specific analysis
     const variantGames = {
-      blitz: Math.floor(games.length * 0.6),
-      rapid: Math.floor(games.length * 0.3),
-      bullet: Math.floor(games.length * 0.1)
+      blitz: games.filter(g => {
+        const timeControl = g.time_control || '';
+        if (typeof timeControl === 'string') {
+          return timeControl.includes('blitz') || 
+                 (parseInt(timeControl) >= 180 && parseInt(timeControl) <= 600);
+        }
+        return false;
+      }),
+      rapid: games.filter(g => {
+        const timeControl = g.time_control || '';
+        if (typeof timeControl === 'string') {
+          return timeControl.includes('rapid') || 
+                 (parseInt(timeControl) > 600);
+        }
+        return false;
+      }),
+      bullet: games.filter(g => {
+        const timeControl = g.time_control || '';
+        if (typeof timeControl === 'string') {
+          return timeControl.includes('bullet') || 
+                 (parseInt(timeControl) < 180);
+        }
+        return false;
+      })
     };
     
-    // Generate variant-specific data for realism
-    ['blitz', 'rapid', 'bullet'].forEach((variant: string) => {
-      const totalVariantGames = variantGames[variant as keyof typeof variantGames];
-      const whiteGames = Math.floor(totalVariantGames * 0.5);
-      const blackGames = totalVariantGames - whiteGames;
-      
-      allOpeningsData[variant as ChessVariant] = {
-        white2: formatOpeningData(sequences, 2, 'white', whiteGames).slice(0, 5),
-        black2: formatOpeningData(sequences, 2, 'black', blackGames).slice(0, 5),
-        white3: formatOpeningData(sequences, 3, 'white', whiteGames).slice(0, 5),
-        black3: formatOpeningData(sequences, 3, 'black', blackGames).slice(0, 5), 
-        white4: formatOpeningData(sequences, 4, 'white', whiteGames).slice(0, 5),
-        black4: formatOpeningData(sequences, 4, 'black', blackGames).slice(0, 5),
-        white5: formatOpeningData(sequences, 5, 'white', whiteGames).slice(0, 5),
-        black5: formatOpeningData(sequences, 5, 'black', blackGames).slice(0, 5),
-        white7: formatOpeningData(sequences, 7, 'white', whiteGames).slice(0, 5),
-        black7: formatOpeningData(sequences, 7, 'black', blackGames).slice(0, 5),
-        totalWhiteGames: whiteGames,
-        totalBlackGames: blackGames,
-        meaningfulWhite: meaningfulWhite.slice(0, 5),
-        meaningfulBlack: meaningfulBlack.slice(0, 5)
-      };
-    });
+    // Process each variant
+    for (const variant of ['blitz', 'rapid', 'bullet'] as const) {
+      if (variantGames[variant].length > 0) {
+        const variantData = extractOpeningSequences(variantGames[variant]);
+        const { meaningfulWhite: variantMeaningfulWhite, meaningfulBlack: variantMeaningfulBlack } = 
+          findMeaningfulOpenings(variantData.sequences, variantData.totalWhiteGames, variantData.totalBlackGames);
+        
+        allOpeningsData[variant] = {
+          white3: formatOpeningData(variantData.sequences, 3, 'white', variantData.totalWhiteGames),
+          black3: formatOpeningData(variantData.sequences, 3, 'black', variantData.totalBlackGames),
+          white5: formatOpeningData(variantData.sequences, 5, 'white', variantData.totalWhiteGames),
+          black5: formatOpeningData(variantData.sequences, 5, 'black', variantData.totalBlackGames),
+          white7: formatOpeningData(variantData.sequences, 7, 'white', variantData.totalWhiteGames),
+          black7: formatOpeningData(variantData.sequences, 7, 'black', variantData.totalBlackGames),
+          totalWhiteGames: variantData.totalWhiteGames,
+          totalBlackGames: variantData.totalBlackGames,
+          meaningfulWhite: variantMeaningfulWhite,
+          meaningfulBlack: variantMeaningfulBlack
+        };
+      }
+    }
     
     // Generate time analysis
-    const { dayPerformance, timePerformance } = generateTimeAnalysis(games, isChessCom);
+    const { dayPerformance, timePerformance } = generateTimeAnalysis(games);
     
-    // Find best and worst time slots for later use
-    const bestTimeSlot = [...timePerformance].sort((a, b) => b.winRate - a.winRate)[0];
-    const worstTimeSlot = [...timePerformance].sort((a, b) => a.winRate - b.winRate)[0];
+    // Find best and worst time slots
+    const sortedTimeSlots = [...timePerformance].sort((a, b) => b.winRate - a.winRate);
+    const bestTimeSlot = sortedTimeSlots.length > 0 ? sortedTimeSlots[0] : null;
+    const worstTimeSlot = sortedTimeSlots.length > 0 ? sortedTimeSlots[sortedTimeSlots.length - 1] : null;
     
-    // Find best and worst days for later use
-    const bestDay = [...dayPerformance].sort((a, b) => b.winRate - a.winRate)[0];
-    const worstDay = [...dayPerformance].sort((a, b) => a.winRate - b.winRate)[0];
-    
-    // Add insights to the openings data
-    const openingInsights = extractInsights({
-      timePerformance,
-      dayPerformance,
-      openings: allOpeningsData.all,
-      phaseAccuracy: {
-        opening: 68 + Math.floor(Math.random() * 10),
-        middlegame: 62 + Math.floor(Math.random() * 10),
-        endgame: 59 + Math.floor(Math.random() * 12),
-        totalGames: games.length
-      },
-      weaknesses: [
-        "Time management issues",
-        "Difficulty in closed positions",
-        "Inconsistent calculation"
-      ]
-    });
-    
-    // Add the insights to all variant data
-    Object.keys(allOpeningsData).forEach(variant => {
-      allOpeningsData[variant as ChessVariant].insights = openingInsights;
-    });
+    // Find best and worst days
+    const sortedDays = [...dayPerformance].sort((a, b) => b.winRate - a.winRate);
+    const bestDay = sortedDays.length > 0 ? sortedDays[0] : null;
+    const worstDay = sortedDays.length > 0 ? sortedDays[sortedDays.length - 1] : null;
     
     // Create phase accuracy data (in a real app, this would come from actual game analysis)
     const phaseAccuracy: PhaseAccuracy = {
@@ -588,41 +613,25 @@ export const analyzeChessData = async (userInfo: UserInfo, timeRange: TimeRange)
       ((Math.sin(i * 0.3) * (i/10)) + (Math.random() - 0.5) * 0.5)
     );
     
-    // Create strengths and weaknesses based on data
-    const randomStrength = [
-      "Strong opening preparation",
-      "Excellent tactical awareness",
-      "Good positional understanding",
-      "Strong endgame technique",
-      "Effective piece coordination",
-      "Good calculation abilities"
-    ];
-    
-    const randomWeakness = [
-      "Time management issues",
-      "Difficulty in closed positions",
-      "Inconsistent calculation",
-      "Weak endgame technique",
-      "Poor opening knowledge",
-      "Tactical oversights"
-    ];
-    
+    // Create strengths based on data
     const strengths = [
       `Strong ${phaseAccuracy.opening > phaseAccuracy.middlegame && phaseAccuracy.opening > phaseAccuracy.endgame ? 
         'opening' : (phaseAccuracy.middlegame > phaseAccuracy.endgame ? 'middlegame' : 'endgame')} play`,
-      randomStrength[Math.floor(Math.random() * randomStrength.length)],
+      "Good tactical awareness", // Default strength
       bestTimeSlot ? `Consistent performance during ${bestTimeSlot.slot} time period` : "Consistent performance throughout the day",
       bestDay ? `Strong results on ${bestDay.day}` : "Balanced performance across the week"
     ];
     
+    // Create weaknesses based on data
     const weaknesses = [
       `Weaker ${phaseAccuracy.opening < phaseAccuracy.middlegame && phaseAccuracy.opening < phaseAccuracy.endgame ? 
         'opening' : (phaseAccuracy.middlegame < phaseAccuracy.endgame ? 'middlegame' : 'endgame')} play`,
-      randomWeakness[Math.floor(Math.random() * randomWeakness.length)],
+      "Time management issues", // Default weakness
       worstTimeSlot ? `Below average performance during ${worstTimeSlot.slot} time period` : "Inconsistent performance throughout the day",
       worstDay ? `Poor results on ${worstDay.day}` : "Inconsistent performance throughout the week"
     ];
     
+    // Create recommendations based on analysis
     const recommendations = [
       `Focus on improving ${phaseAccuracy.opening < phaseAccuracy.middlegame && phaseAccuracy.opening < phaseAccuracy.endgame ? 
         'opening' : (phaseAccuracy.middlegame < phaseAccuracy.endgame ? 'middlegame' : 'endgame')} technique`,
@@ -630,6 +639,20 @@ export const analyzeChessData = async (userInfo: UserInfo, timeRange: TimeRange)
       bestTimeSlot ? `Schedule important matches during your peak performance time (${bestTimeSlot.slot})` : "Try to identify your best playing time and schedule important games then",
       worstDay ? `Consider taking a break from competitive play on ${worstDay.day}` : "Maintain a consistent playing schedule throughout the week"
     ];
+    
+    // Add insights to the openings data for all variants
+    const insights = extractInsights({
+      timePerformance,
+      dayPerformance,
+      openings: allOpeningsData.all,
+      phaseAccuracy,
+      weaknesses
+    });
+    
+    // Add the insights to all variant data
+    Object.keys(allOpeningsData).forEach(variant => {
+      allOpeningsData[variant as ChessVariant].insights = insights;
+    });
     
     // Construct the final user analysis object
     const userAnalysis: UserAnalysis = {
@@ -648,7 +671,7 @@ export const analyzeChessData = async (userInfo: UserInfo, timeRange: TimeRange)
       strengths,
       weaknesses,
       recommendations,
-      insights: openingInsights
+      insights
     };
     
     return userAnalysis;
@@ -663,22 +686,12 @@ export const analyzeChessData = async (userInfo: UserInfo, timeRange: TimeRange)
   }
 };
 
-// Main function to fetch and analyze chess data
+// Main function to fetch and analyze chess data - no longer needed but kept for compatibility
 export const fetchUserData = async (userInfo: UserInfo, timeRange: TimeRange): Promise<UserAnalysis> => {
   try {
-    toast({
-      title: "Fetching chess data",
-      description: `Analyzing ${userInfo.username}'s games from ${userInfo.platform}...`,
-    });
-    
-    const data = await analyzeChessData(userInfo, timeRange);
-    
-    toast({
-      title: "Analysis complete",
-      description: `Successfully analyzed ${userInfo.username}'s games!`,
-    });
-    
-    return data;
+    // This function is maintained for backward compatibility
+    // Now we handle the downloading separately
+    throw new Error("This function is deprecated, please use analyzeChessData instead");
   } catch (error) {
     toast({
       title: "Error fetching data",
@@ -689,3 +702,14 @@ export const fetchUserData = async (userInfo: UserInfo, timeRange: TimeRange): P
     throw error;
   }
 };
+
+// Add function to extract ratings from raw game data
+export const extractRatings = (games: any[], platform: Platform): Rating => {
+  const ratings: Rating = {};
+  
+  // Group games by variant
+  const variantGames = {
+    bullet: [] as any[],
+    blitz: [] as any[],
+    rapid: [] as any[],
+  };

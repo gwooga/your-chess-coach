@@ -6,28 +6,73 @@ import UserForm from './UserForm';
 import CoachTab from './CoachTab';
 import OpeningsTab from './OpeningsTab';
 import { UserInfo, TimeRange, ChessVariant, UserAnalysis } from '@/utils/types';
-import { fetchUserData } from '@/services/chessAnalysisService';
+import { analyzeChessData } from '@/services/chessAnalysisService';
+import { downloadPGN } from '@/services/pgnDownloadService';
 import { Button } from "@/components/ui/button";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from '@/utils/ThemeProvider';
+import { Progress } from "@/components/ui/progress";
+import { toast } from '@/hooks/use-toast';
 
 const ChessAnalyzer: React.FC = () => {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [userAnalysis, setUserAnalysis] = useState<UserAnalysis | null>(null);
-  const [timeRange, setTimeRange] = useState<TimeRange>('last90'); // Changed default to 90 days
+  const [timeRange, setTimeRange] = useState<TimeRange>('last90'); // Default to 90 days
   const [activeTab, setActiveTab] = useState<string>("coach");
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const { theme, setTheme } = useTheme();
   
-  const handleUserSubmit = async (info: UserInfo) => {
+  const handleUserSubmit = async (info: UserInfo, selectedTimeRange: TimeRange) => {
     setIsLoading(true);
     setUserInfo(info);
+    setTimeRange(selectedTimeRange);
+    setDownloadProgress(0);
     
     try {
-      const analysis = await fetchUserData(info, timeRange);
+      toast({
+        title: "Starting download",
+        description: `Downloading games for ${info.username} from ${info.platform}...`,
+      });
+      
+      // Download the PGN data first
+      const games = await downloadPGN(
+        info.username, 
+        info.platform, 
+        selectedTimeRange,
+        setDownloadProgress
+      );
+      
+      if (games.length === 0) {
+        toast({
+          title: "No games found",
+          description: `No games found for ${info.username} on ${info.platform}`,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      toast({
+        title: "Download complete",
+        description: `Successfully downloaded ${games.length} games. Starting analysis...`,
+      });
+      
+      // Now analyze the data
+      const analysis = await analyzeChessData({ games, info, selectedTimeRange });
       setUserAnalysis(analysis);
+      
+      toast({
+        title: "Analysis complete",
+        description: `Successfully analyzed ${games.length} games for ${info.username}!`,
+      });
     } catch (error) {
-      console.error("Failed to fetch user data:", error);
+      console.error("Failed to fetch or analyze data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch or analyze chess games. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -38,12 +83,52 @@ const ChessAnalyzer: React.FC = () => {
     
     setTimeRange(value);
     setIsLoading(true);
+    setDownloadProgress(0);
     
     try {
-      const analysis = await fetchUserData(userInfo, value);
+      toast({
+        title: "Updating time range",
+        description: `Downloading games for ${userInfo.username} with new time range...`,
+      });
+      
+      // Download the PGN data with the new time range
+      const games = await downloadPGN(
+        userInfo.username, 
+        userInfo.platform, 
+        value,
+        setDownloadProgress
+      );
+      
+      if (games.length === 0) {
+        toast({
+          title: "No games found",
+          description: `No games found for ${userInfo.username} on ${userInfo.platform} in this time range`,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      toast({
+        title: "Download complete",
+        description: `Successfully downloaded ${games.length} games. Starting analysis...`,
+      });
+      
+      // Now analyze the data
+      const analysis = await analyzeChessData({ games, info: userInfo, timeRange: value });
       setUserAnalysis(analysis);
+      
+      toast({
+        title: "Analysis complete",
+        description: `Successfully analyzed ${games.length} games for ${userInfo.username}!`,
+      });
     } catch (error) {
-      console.error("Failed to fetch user data:", error);
+      console.error("Failed to fetch or analyze data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch or analyze chess games. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -61,6 +146,17 @@ const ChessAnalyzer: React.FC = () => {
           {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </Button>
       </div>
+      
+      {isLoading && (
+        <div className="mb-8">
+          <p className="mb-2 text-sm text-muted-foreground">
+            {downloadProgress < 100 
+              ? `Downloading games: ${downloadProgress}%` 
+              : "Analyzing games..."}
+          </p>
+          <Progress value={downloadProgress} className="h-2" />
+        </div>
+      )}
       
       {!userAnalysis ? (
         <UserForm onSubmit={handleUserSubmit} isLoading={isLoading} />
