@@ -131,28 +131,42 @@ const findMeaningfulOpenings = (sequences: Record<string, any>, totalWhiteGames:
   meaningfulWhite: OpeningData[];
   meaningfulBlack: OpeningData[];
 } => {
+  // Define typed openingSeq type to avoid 'unknown' errors
+  interface OpeningSeq {
+    name: string;
+    sequence: string;
+    games: number;
+    wins: number;
+    draws: number;
+    losses: number;
+  }
+
   // Combine all white sequences
-  const whiteSequences = [...Object.values(sequences.white2), 
-                          ...Object.values(sequences.white3),
-                          ...Object.values(sequences.white4), 
-                          ...Object.values(sequences.white5),
-                          ...Object.values(sequences.white7), 
-                          ...Object.values(sequences.white10)];
+  const whiteSequences = [
+    ...Object.values(sequences.white2) as OpeningSeq[], 
+    ...Object.values(sequences.white3) as OpeningSeq[],
+    ...Object.values(sequences.white4) as OpeningSeq[], 
+    ...Object.values(sequences.white5) as OpeningSeq[],
+    ...Object.values(sequences.white7) as OpeningSeq[], 
+    ...Object.values(sequences.white10) as OpeningSeq[]
+  ];
   
   // Combine all black sequences
-  const blackSequences = [...Object.values(sequences.black2), 
-                          ...Object.values(sequences.black3),
-                          ...Object.values(sequences.black4), 
-                          ...Object.values(sequences.black5),
-                          ...Object.values(sequences.black7), 
-                          ...Object.values(sequences.black10)];
+  const blackSequences = [
+    ...Object.values(sequences.black2) as OpeningSeq[], 
+    ...Object.values(sequences.black3) as OpeningSeq[],
+    ...Object.values(sequences.black4) as OpeningSeq[], 
+    ...Object.values(sequences.black5) as OpeningSeq[],
+    ...Object.values(sequences.black7) as OpeningSeq[], 
+    ...Object.values(sequences.black10) as OpeningSeq[]
+  ];
   
   // Filter sequences with at least 25 games
   const candidateWhite = whiteSequences.filter(seq => seq.games >= 25);
   const candidateBlack = blackSequences.filter(seq => seq.games >= 25);
   
   // Calculate score and sort - for now using a simplified formula
-  const calculateScore = (seq: any) => {
+  const calculateScore = (seq: OpeningSeq) => {
     const winRate = seq.wins / seq.games;
     return seq.games * (Math.abs(winRate - 0.5) + 0.2);
   };
@@ -189,10 +203,20 @@ const findMeaningfulOpenings = (sequences: Record<string, any>, totalWhiteGames:
 
 // Format opening data for display
 const formatOpeningData = (sequences: Record<string, any>, depth: number, color: 'white' | 'black', totalGames: number): OpeningData[] => {
+  // Define typed openingSeq type to avoid 'unknown' errors
+  interface OpeningSeq {
+    name: string;
+    sequence: string;
+    games: number;
+    wins: number;
+    draws: number;
+    losses: number;
+  }
+
   const key = `${color}${depth}`;
   
   return Object.values(sequences[key])
-    .map((opening: any) => ({
+    .map((opening: OpeningSeq) => ({
       name: opening.name,
       sequence: opening.sequence,
       games: opening.games,
@@ -369,7 +393,9 @@ const extractInsights = (data: any): string[] => {
   }
   
   // Additional insights as needed
-  insights.push(`Based on your game history, working on ${data.weaknesses[0].toLowerCase()} could significantly improve your results.`);
+  if (data.weaknesses && data.weaknesses.length > 0) {
+    insights.push(`Based on your game history, working on ${data.weaknesses[0].toLowerCase()} could significantly improve your results.`);
+  }
   
   return insights.slice(0, 5); // Return at most 5 insights
 };
@@ -461,6 +487,16 @@ export const analyzeChessData = async (userInfo: UserInfo, timeRange: TimeRange)
     
     // Generate time analysis
     const { dayPerformance, timePerformance } = generateTimeAnalysis(games, isChessCom);
+    
+    // Sort time performance to find best and worst time slots
+    const sortedTimeSlots = [...timePerformance].sort((a, b) => b.winRate - a.winRate);
+    const bestTimeSlot = sortedTimeSlots[0];
+    const worstTimeSlot = sortedTimeSlots[sortedTimeSlots.length - 1];
+    
+    // Sort day performance to find best and worst days
+    const sortedDays = [...dayPerformance].sort((a, b) => b.winRate - a.winRate);
+    const bestDay = sortedDays[0];
+    const worstDay = sortedDays[sortedDays.length - 1];
     
     // Create phase accuracy data (in a real app, this would come from actual game analysis)
     const phaseAccuracy: PhaseAccuracy = {
