@@ -1,73 +1,52 @@
-# Welcome to your Lovable project
 
-## Project info
+# Chess Game Archive Fetcher
 
-**URL**: https://lovable.dev/projects/3071e142-2433-4a99-836e-909860429c8d
+This tool allows you to fetch PGN archives from Chess.com or Lichess for any player, with optional computer analysis.
 
-## How can I edit this code?
+## Requirements
 
-There are several ways of editing your application.
+- Python 3
+- python-chess package (`pip install python-chess`)
+- Stockfish (optional, for analysis when using Chess.com data)
 
-**Use Lovable**
+## Usage
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/3071e142-2433-4a99-836e-909860429c8d) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```bash
+./fetch_chess_games.sh --platform <platform> --username <username> --period <period> [--need_analysis]
 ```
 
-**Edit a file directly in GitHub**
+### Parameters:
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- `--platform`: Either "chess.com" or "lichess"
+- `--username`: Player's username
+- `--period`: One of:
+  - "all" - all available games
+  - "last_30", "last_90", "last_180", "last_365" - games from the last X days
+  - "YYYY-MM-DD..YYYY-MM-DD" - games between two specific dates
+- `--need_analysis`: Flag to include computer analysis (optional)
 
-**Use GitHub Codespaces**
+### Examples:
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```bash
+# Fetch the last 30 days of games from Chess.com without analysis
+./fetch_chess_games.sh --platform chess.com --username hikaru --period last_30
 
-## What technologies are used for this project?
+# Fetch the last 90 days of games from Lichess with analysis
+./fetch_chess_games.sh --platform lichess --username DrNykterstein --period last_90 --need_analysis
 
-This project is built with:
+# Fetch games from a specific date range
+./fetch_chess_games.sh --platform chess.com --username MagnusCarlsen --period 2023-01-01..2023-03-31
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Output
 
-## How can I deploy this project?
+The tool will output a PGN file named `<username>_<period>_<raw|eval>.pgn` containing the fetched games.
 
-Simply open [Lovable](https://lovable.dev/projects/3071e142-2433-4a99-836e-909860429c8d) and click on Share -> Publish.
+- If `--need_analysis` is not specified, the file will have "raw" in the name.
+- If `--need_analysis` is specified, the file will have "eval" in the name.
 
-## Can I connect a custom domain to my Lovable project?
+## Notes
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- When fetching from Chess.com with analysis, Stockfish must be installed and available in your PATH.
+- Lichess API already provides computer evaluations when `--need_analysis` is used.
+- The tool is limited to fetching a maximum of 3000 games from Lichess due to API restrictions.
