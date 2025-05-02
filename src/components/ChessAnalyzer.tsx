@@ -59,7 +59,12 @@ const ChessAnalyzer: React.FC = () => {
       });
       
       // Now analyze the data
-      const analysis = await analyzeChessData({ games, info, selectedTimeRange });
+      const analysis = await analyzeChessData({ 
+        games, 
+        info, 
+        timeRange: selectedTimeRange 
+      });
+      
       setUserAnalysis(analysis);
       
       toast({

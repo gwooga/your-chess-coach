@@ -29,7 +29,7 @@ export const parsePgnContent = (pgnContent: string): any[] => {
       try {
         // Try to parse and extract game information
         const chess = new Chess();
-        chess.load_pgn(currentGame);
+        chess.loadPgn(currentGame);
         
         // Extract relevant game data
         const headers = chess.header();
@@ -90,7 +90,7 @@ export const parsePgnContent = (pgnContent: string): any[] => {
   if (currentGame.trim() !== '') {
     try {
       const chess = new Chess();
-      chess.load_pgn(currentGame);
+      chess.loadPgn(currentGame);
       
       const headers = chess.header();
       const moves = chess.history({ verbose: true });
