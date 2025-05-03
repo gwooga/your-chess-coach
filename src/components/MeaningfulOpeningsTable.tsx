@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Table,
@@ -15,7 +16,8 @@ import {
 import { Button } from "@/components/ui/button";
 import ChessBoard from './ChessBoard';
 import { OpeningData } from '@/utils/types';
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface MeaningfulOpeningsTableProps {
   data: OpeningData[];
@@ -101,17 +103,25 @@ const MeaningfulOpeningsTable: React.FC<MeaningfulOpeningsTableProps> = ({ data,
             <TableHead className="cursor-pointer" onClick={() => handleSort('games')}>
               Games {getSortIcon('games')}
             </TableHead>
-            <TableHead className="cursor-pointer" onClick={() => handleSort('score')}>
+            <TableHead className="cursor-pointer flex items-center gap-1" onClick={() => handleSort('score')}>
               Impact {getSortIcon('score')}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>Impact score reflects how significant this opening is to your results. It combines frequency (how often you play it) with performance (win rate).</p>
+                </TooltipContent>
+              </Tooltip>
             </TableHead>
-            <TableHead>Win Rate</TableHead>
+            <TableHead>Win/Draw/Lose</TableHead>
             <TableHead>Board</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {sortedData.map((opening, index) => (
             <TableRow key={index}>
-              <TableCell className="font-medium">{opening.name}</TableCell>
+              <TableCell className="font-medium">{opening.name || "Unnamed Opening"}</TableCell>
               <TableCell className="font-mono text-xs">{formatSequence(opening.sequence)}</TableCell>
               <TableCell>{opening.gamesPercentage}%</TableCell>
               <TableCell>
@@ -122,12 +132,14 @@ const MeaningfulOpeningsTable: React.FC<MeaningfulOpeningsTableProps> = ({ data,
                   <div
                     className="h-2.5 rounded-full"
                     style={{
-                      width: `${opening.winsPercentage + opening.drawsPercentage / 2}%`,
+                      width: `100%`,
                       background: `linear-gradient(to right, 
                         #4ade80 0%, 
-                        #4ade80 ${(opening.winsPercentage / (opening.winsPercentage + opening.drawsPercentage / 2) * 100).toFixed(1)}%, 
-                        #a3a3a3 ${(opening.winsPercentage / (opening.winsPercentage + opening.drawsPercentage / 2) * 100).toFixed(1)}%, 
-                        #a3a3a3 100%
+                        #4ade80 ${opening.winsPercentage}%, 
+                        #a3a3a3 ${opening.winsPercentage}%, 
+                        #a3a3a3 ${opening.winsPercentage + opening.drawsPercentage}%,
+                        #ea384c ${opening.winsPercentage + opening.drawsPercentage}%,
+                        #ea384c 100%
                       )`
                     }}
                   ></div>

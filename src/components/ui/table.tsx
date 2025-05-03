@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
@@ -105,6 +106,12 @@ const TableCaption = React.forwardRef<
 ))
 TableCaption.displayName = "TableCaption"
 
+// Helper function to check if table data should be displayed
+const shouldDisplayTable = (tableData?: any[]): boolean => {
+  if (!tableData || tableData.length === 0) return false;
+  return tableData.some(item => item.gamesPercentage >= 1);
+};
+
 export {
   Table,
   TableHeader,
@@ -114,4 +121,5 @@ export {
   TableRow,
   TableCell,
   TableCaption,
+  shouldDisplayTable,
 }

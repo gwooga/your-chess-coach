@@ -1,3 +1,4 @@
+
 export type Platform = 'chess.com' | 'lichess' | 'uploaded';
 
 export type TimeRange = 'last30' | 'last90' | 'last180' | 'last365';
@@ -39,8 +40,12 @@ export interface OpeningsTableData {
   black4?: OpeningData[];
   white5: OpeningData[];
   black5: OpeningData[];
+  white6?: OpeningData[];
+  black6?: OpeningData[];
   white7: OpeningData[];
   black7: OpeningData[];
+  white8?: OpeningData[];
+  black8?: OpeningData[];
   white10?: OpeningData[];
   black10?: OpeningData[];
   totalWhiteGames: number;

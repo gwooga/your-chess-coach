@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -7,9 +8,6 @@ import OpeningsTab from './OpeningsTab';
 import { UserInfo, TimeRange, ChessVariant, UserAnalysis, Platform } from '@/utils/types';
 import { analyzeChessData } from '@/services/chessAnalysisService';
 import { downloadPGN, parsePgnContent, filterGamesByTimeRange } from '@/services/pgnDownloadService';
-import { Button } from "@/components/ui/button";
-import { Moon, Sun } from "lucide-react";
-import { useTheme } from '@/utils/ThemeProvider';
 import { Progress } from "@/components/ui/progress";
 import { toast } from '@/hooks/use-toast';
 
@@ -20,7 +18,6 @@ const ChessAnalyzer: React.FC = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>('last90'); // Default to 90 days
   const [activeTab, setActiveTab] = useState<string>("coach");
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
-  const { theme, setTheme } = useTheme();
   const [allUploadedGames, setAllUploadedGames] = useState<any[]>([]);
   
   const handleUserSubmit = async (info: UserInfo, selectedTimeRange: TimeRange) => {
@@ -288,17 +285,10 @@ const ChessAnalyzer: React.FC = () => {
     }
   };
 
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  };
-
   return (
     <div className="container py-8">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold text-left">Chess Insight Coach</h1>
-        <Button variant="outline" size="icon" onClick={toggleTheme}>
-          {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-        </Button>
       </div>
       
       {isLoading && (
@@ -344,10 +334,6 @@ const ChessAnalyzer: React.FC = () => {
                   </SelectContent>
                 </Select>
               )}
-              
-              <Button variant="outline" size="icon" onClick={toggleTheme}>
-                {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-              </Button>
             </div>
           </div>
           
