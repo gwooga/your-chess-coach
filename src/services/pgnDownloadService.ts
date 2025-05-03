@@ -1,4 +1,3 @@
-
 import { toast } from '@/hooks/use-toast';
 import { TimeRange, Platform } from '@/utils/types';
 import { Chess } from 'chess.js';
@@ -31,9 +30,10 @@ const parsePgnDate = (dateStr: string): Date | null => {
   return null;
 };
 
-// Filter games by time range
-const filterGamesByTimeRange = (games: any[], timeRange: TimeRange): any[] => {
-  if (timeRange === 'all') return games;
+// Filter games by time range - now exported
+export const filterGamesByTimeRange = (games: any[], timeRange: TimeRange): any[] => {
+  // If no timerange specified or invalid value, return all games
+  if (!timeRange) return games;
   
   const now = new Date();
   let cutoffDate = new Date();
