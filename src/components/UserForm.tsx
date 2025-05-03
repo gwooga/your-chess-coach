@@ -43,14 +43,14 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onPgnUpload, isLoading })
 
     toast({
       title: "Reading file",
-      description: "Processing your PGN file...",
+      description: "Processing your file...",
     });
 
     const reader = new FileReader();
     reader.onload = (event) => {
       if (event.target?.result) {
         const content = event.target.result as string;
-        console.log("PGN file loaded, size:", content.length);
+        console.log("File loaded, size:", content.length);
         
         // Perform a basic validation check
         if (!content.includes('[Event') || !content.includes('[Date')) {
@@ -64,7 +64,7 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onPgnUpload, isLoading })
         
         // Count how many games might be in the file by counting [Event occurrences
         const potentialGameCount = (content.match(/\[Event /g) || []).length;
-        console.log(`Detected approximately ${potentialGameCount} games in the PGN file`);
+        console.log(`Detected approximately ${potentialGameCount} games in the file`);
         
         if (potentialGameCount === 0) {
           toast({
@@ -82,8 +82,7 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onPgnUpload, isLoading })
             const tempGame = `[Event${gameSample.split(/\n\n\[Event/)[0]}`;
             const chess = new Chess();
             
-            // Use Chess.js to validate, but without the sloppy option
-            // Instead we'll clean up the PGN text first
+            // Use Chess.js to validate, but clean up the PGN text first
             const cleanedPgn = tempGame
               .replace(/\{[^}]*\}/g, '') // Remove comments in curly braces
               .replace(/%[^\s\n]*/g, '') // Remove %eval, %clk annotations
@@ -93,7 +92,7 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onPgnUpload, isLoading })
             
             toast({
               title: "File accepted",
-              description: `Processing ${potentialGameCount} games from PGN file...`,
+              description: `Processing ${potentialGameCount} games from file...`,
             });
             
             onPgnUpload(content);
@@ -107,7 +106,7 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onPgnUpload, isLoading })
         } catch (e) {
           console.error("Error validating PGN:", e);
           toast({
-            title: "Error processing PGN",
+            title: "Error processing file",
             description: "The file appears to be in an unsupported format",
             variant: "destructive",
           });
@@ -218,7 +217,7 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onPgnUpload, isLoading })
               disabled={isLoading}
             >
               <Upload className="mr-2 h-4 w-4" />
-              Upload PGN File
+              Upload PGN or TXT File
             </Button>
           </div>
         </form>

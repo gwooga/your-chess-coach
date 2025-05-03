@@ -1,3 +1,4 @@
+
 import { toast } from '@/hooks/use-toast';
 import { TimeRange, Platform } from '@/utils/types';
 import { Chess } from 'chess.js';
@@ -55,100 +56,192 @@ export const filterGamesByTimeRange = (games: any[], timeRange: TimeRange): any[
   });
 };
 
-// Parse PGN content and extract games
+// Parse PGN content and extract games with improved error handling
 export const parsePgnContent = (pgnContent: string): any[] => {
   const games: any[] = [];
-  // Split the PGN content by the standard separator for new games
-  const gameTexts = pgnContent.split(/\n\n\[Event /);
+  console.log("Starting PGN parsing, content length:", pgnContent.length);
   
-  console.log(`Found ${gameTexts.length} potential games in PGN content`);
-  
-  // Process each game
-  for (let i = 0; i < gameTexts.length; i++) {
-    let gameText = gameTexts[i];
+  try {
+    // Try to normalize line endings for consistent parsing
+    const normalizedContent = pgnContent
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n');
     
-    // For all games except the first one, we need to add back the [Event tag
-    if (i > 0) {
-      gameText = '[Event ' + gameText;
-    }
+    // Split the PGN content by the standard separator for new games
+    // First look for double newline + [Event pattern
+    let gameTexts: string[] = [];
     
-    // Skip empty games
-    if (!gameText.trim()) continue;
-    
-    // Skip fragments that don't look like a game
-    if (!gameText.includes('[') || !gameText.includes(']')) continue;
-    
-    try {
-      // Create a new Chess instance for each game
-      const chess = new Chess();
-      
-      // Clean the PGN before loading - remove comments and annotations
-      let cleanedPgn = gameText
-        .replace(/\{[^}]*\}/g, '') // Remove comments in curly braces
-        .replace(/%[^\s\n]*/g, '') // Remove %eval, %clk annotations
-        .replace(/\$\d+/g, '');    // Remove numeric annotation glyphs
-      
-      // Load PGN - the chess.js library will handle the parsing
-      try {
-        chess.loadPgn(cleanedPgn);
-      } catch (parseError) {
-        console.error(`Error loading game ${i+1}:`, parseError);
+    // Try different splitting strategies to handle various PGN formats
+    if (normalizedContent.includes('\n\n[Event ')) {
+      gameTexts = normalizedContent.split(/\n\n\[Event /);
+      console.log("Split by standard double newline + Event tag, found:", gameTexts.length);
+    } else if (normalizedContent.includes('\n[Event ')) {
+      // Some files use single newline before [Event
+      gameTexts = normalizedContent.split(/\n\[Event /);
+      console.log("Split by single newline + Event tag, found:", gameTexts.length);
+    } else {
+      // Try more aggressive splitting if we can't find standard separators
+      const eventMatches = normalizedContent.match(/\[Event[^\]]+\]/g) || [];
+      if (eventMatches.length > 0) {
+        console.log("Using regex matching for Event tags, found:", eventMatches.length);
         
-        // Perform additional cleanup if standard loading fails
-        cleanedPgn = cleanedPgn
-          .replace(/\([^)]*\)/g, '') // Remove variations in parentheses
-          .replace(/\s\d+\s?\.+\s?/g, ' '); // Remove move numbers
+        // Extract game blocks using regex
+        const gameBlocks = [];
+        let currentPos = 0;
         
-        try {
-          chess.loadPgn(cleanedPgn);
-        } catch (secondError) {
-          console.error(`Failed to load game ${i+1} even after cleanup:`, secondError);
-          continue; // Skip this game
+        for (let i = 0; i < eventMatches.length; i++) {
+          const eventPos = normalizedContent.indexOf(eventMatches[i], currentPos);
+          if (eventPos !== -1) {
+            if (i > 0) {
+              const gameText = normalizedContent.substring(currentPos, eventPos);
+              gameBlocks.push(gameText);
+            }
+            currentPos = eventPos;
+          }
+        }
+        
+        // Add the last game block
+        gameBlocks.push(normalizedContent.substring(currentPos));
+        gameTexts = gameBlocks;
+      } else {
+        // Last resort: try to find all header tags to identify game boundaries
+        console.log("No standard game separators found, trying header tag matching");
+        const headerRegex = /\[\w+\s+"[^"]*"\]/g;
+        const headerMatches = [...normalizedContent.matchAll(headerRegex)];
+        
+        if (headerMatches.length > 0) {
+          console.log("Found header tags:", headerMatches.length);
+          
+          // Find sequences of header tags to identify game starts
+          let lastPos = 0;
+          let gameStart = -1;
+          const positions = [];
+          
+          for (const match of headerMatches) {
+            const pos = match.index as number;
+            
+            // If this header is far from the last one, it might be a new game
+            if (pos - lastPos > 100) {
+              if (gameStart !== -1) {
+                positions.push(gameStart);
+              }
+              gameStart = pos;
+            }
+            
+            lastPos = pos;
+          }
+          
+          // Add the last game start
+          if (gameStart !== -1) {
+            positions.push(gameStart);
+          }
+          
+          // Extract game texts based on positions
+          if (positions.length > 0) {
+            gameTexts = positions.map((pos, i) => {
+              const end = i < positions.length - 1 ? positions[i + 1] : normalizedContent.length;
+              return normalizedContent.substring(pos, end);
+            });
+          }
         }
       }
-      
-      // Extract headers
-      const headers = chess.header();
-      
-      // Determine result
-      let result = 'draw';
-      if (headers.Result === '1-0') result = 'win';
-      else if (headers.Result === '0-1') result = 'loss';
-      
-      // Determine player color (will be improved in handlePgnUpload)
-      const playerColor = 'white'; // Default assumption
-      
-      // Create game object
-      const gameObj = {
-        event: headers.Event || 'Unknown Event',
-        site: headers.Site || 'Unknown Site',
-        date: headers.Date || 'Unknown Date',
-        white: { 
-          username: headers.White || 'Unknown White', 
-          rating: headers.WhiteElo || '?',
-          result: headers.Result === '1-0' ? 'win' : (headers.Result === '0-1' ? 'loss' : 'draw')
-        },
-        black: { 
-          username: headers.Black || 'Unknown Black', 
-          rating: headers.BlackElo || '?',
-          result: headers.Result === '0-1' ? 'win' : (headers.Result === '1-0' ? 'loss' : 'draw')
-        },
-        result,
-        time_control: headers.TimeControl || 'Unknown',
-        termination: headers.Termination || '',
-        opening: headers.Opening ? { name: headers.Opening } : { name: 'Unknown Opening' },
-        moves: chess.history({ verbose: true }),
-        pgn: chess.pgn(),
-        fen: chess.fen()
-      };
-      
-      // Add game to collection
-      games.push(gameObj);
-      
-    } catch (e) {
-      console.error("Error processing game:", e);
-      // Continue with next game
     }
+    
+    console.log(`Found ${gameTexts.length} potential games in PGN content using splitting`);
+    
+    // Process each game
+    for (let i = 0; i < gameTexts.length; i++) {
+      let gameText = gameTexts[i];
+      
+      // For all games except the first one when using standard splitting, we need to add back the [Event tag
+      if (i > 0 && !gameText.trim().startsWith('[') && normalizedContent.includes('\n\n[Event ')) {
+        gameText = '[Event ' + gameText;
+      }
+      
+      // Skip empty games or very small fragments that are unlikely to be valid
+      if (!gameText.trim() || gameText.length < 20) continue;
+      
+      // Skip fragments that don't look like a game
+      if (!gameText.includes('[') || !gameText.includes(']')) continue;
+      
+      try {
+        // Create a new Chess instance for each game
+        const chess = new Chess();
+        
+        // Clean the PGN before loading - remove comments and annotations
+        let cleanedPgn = gameText
+          .replace(/\{[^}]*\}/g, '') // Remove comments in curly braces
+          .replace(/%[^\s\n]*/g, '') // Remove %eval, %clk annotations
+          .replace(/\$\d+/g, '')    // Remove numeric annotation glyphs
+          .replace(/\([^)]*\)/g, '') // Remove variations in parentheses
+          .replace(/;[^\n]*/g, ''); // Remove semicolon comments
+        
+        try {
+          // First attempt to load the PGN
+          chess.loadPgn(cleanedPgn);
+        } catch (parseError) {
+          console.error(`Error loading game ${i+1}, trying with more cleanup:`, parseError);
+          
+          // More aggressive cleanup
+          cleanedPgn = cleanedPgn
+            .replace(/\d+\.\.\./g, '') // Remove move continuations like "1..."
+            .replace(/\s\d+\s?\.+\s?/g, ' ') // Remove move numbers
+            .replace(/\s{2,}/g, ' '); // Normalize whitespace
+          
+          try {
+            chess.loadPgn(cleanedPgn);
+          } catch (secondError) {
+            console.error(`Failed to load game ${i+1} even after cleanup:`, secondError);
+            continue; // Skip this game
+          }
+        }
+        
+        // Extract headers
+        const headers = chess.header();
+        
+        // Determine result
+        let result = 'draw';
+        if (headers.Result === '1-0') result = 'win';
+        else if (headers.Result === '0-1') result = 'loss';
+        
+        // Create game object
+        const gameObj = {
+          event: headers.Event || 'Unknown Event',
+          site: headers.Site || 'Unknown Site',
+          date: headers.Date || 'Unknown Date',
+          white: { 
+            username: headers.White || 'Unknown White', 
+            rating: headers.WhiteElo || '?',
+            result: headers.Result === '1-0' ? 'win' : (headers.Result === '0-1' ? 'loss' : 'draw')
+          },
+          black: { 
+            username: headers.Black || 'Unknown Black', 
+            rating: headers.BlackElo || '?',
+            result: headers.Result === '0-1' ? 'win' : (headers.Result === '1-0' ? 'loss' : 'draw')
+          },
+          result,
+          time_control: headers.TimeControl || 'Unknown',
+          termination: headers.Termination || '',
+          opening: headers.Opening ? { name: headers.Opening } : { name: 'Unknown Opening' },
+          moves: chess.history({ verbose: true }),
+          pgn: chess.pgn(),
+          fen: chess.fen()
+        };
+        
+        // Add game to collection
+        games.push(gameObj);
+      } catch (e) {
+        console.error("Error processing game:", e);
+        // Continue with next game
+      }
+    }
+  } catch (e) {
+    console.error("Critical error during PGN parsing:", e);
+    toast({
+      title: "Parsing error",
+      description: "Failed to parse the uploaded file. Please check the file format.",
+      variant: "destructive",
+    });
   }
   
   console.log(`Successfully parsed ${games.length} games from PGN content`);
