@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -93,8 +92,13 @@ const ChessAnalyzer: React.FC = () => {
         description: "Parsing uploaded games...",
       });
       
+      console.log("Parsing PGN content, length:", pgnContent.length);
+      console.log("First 200 chars:", pgnContent.substring(0, 200));
+      
       // Parse the uploaded PGN content
       const games = parsePgnContent(pgnContent);
+      
+      console.log(`Parsed ${games.length} games from PGN content`);
       
       if (games.length === 0) {
         toast({
@@ -111,9 +115,14 @@ const ChessAnalyzer: React.FC = () => {
         description: `Successfully processed ${games.length} games. Starting analysis...`,
       });
       
-      // Set a default user info for uploaded PGN
+      // Set user info for uploaded PGN
+      // Try to determine username from the games, fallback to "PGN User"
+      const firstGameWhite = games[0]?.white?.username || "Unknown";
+      const firstGameBlack = games[0]?.black?.username || "Unknown";
+      
       const uploadUserInfo = {
-        username: games[0]?.white?.username || games[0]?.black?.username || "PGN User",
+        username: firstGameWhite !== "Unknown White" ? firstGameWhite : 
+                 (firstGameBlack !== "Unknown Black" ? firstGameBlack : "PGN User"),
         platform: "uploaded" as Platform
       };
       
@@ -124,7 +133,7 @@ const ChessAnalyzer: React.FC = () => {
       const analysis = await analyzeChessData({ 
         games, 
         info: uploadUserInfo, 
-        timeRange: 'last90' 
+        timeRange: 'last90' // Default time range for uploads
       });
       
       setUserAnalysis(analysis);

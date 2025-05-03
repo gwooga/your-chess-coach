@@ -40,11 +40,13 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onPgnUpload, isLoading })
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check if it's a PGN file (either by extension or MIME type)
-    if (!file.name.toLowerCase().endsWith('.pgn') && file.type !== 'application/x-chess-pgn') {
+    // Check file extension - accept any text file that might contain PGN
+    if (!file.name.toLowerCase().endsWith('.pgn') && 
+        !file.type.includes('text') && 
+        file.type !== 'application/octet-stream') {
       toast({
         title: "Invalid file",
-        description: "Please upload a valid PGN file",
+        description: "Please upload a valid PGN file (.pgn extension)",
         variant: "destructive",
       });
       return;
@@ -54,6 +56,21 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onPgnUpload, isLoading })
     reader.onload = (event) => {
       if (event.target?.result) {
         const content = event.target.result as string;
+        // Check if the content looks like a PGN file (has Event tags)
+        if (!content.includes('[Event ')) {
+          toast({
+            title: "Invalid PGN format",
+            description: "The file doesn't appear to be a valid PGN file",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        toast({
+          title: "File uploaded",
+          description: "Processing PGN file...",
+        });
+        
         onPgnUpload(content);
       }
     };
@@ -64,7 +81,7 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onPgnUpload, isLoading })
         variant: "destructive",
       });
     };
-    reader.readAsText(file);
+    reader.readAsText(file, 'UTF-8');
   };
 
   const triggerFileInput = () => {
@@ -138,11 +155,14 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onPgnUpload, isLoading })
 
           <Separator className="my-4" />
           
+          <div className="text-center text-sm text-muted-foreground mb-2">
+            OR
+          </div>
+          
           <div className="space-y-2">
-            <Label className="block mb-2">Or Upload PGN File</Label>
             <input 
               type="file" 
-              accept=".pgn,application/x-chess-pgn" 
+              accept=".pgn,.txt" 
               onChange={handleFileChange}
               className="hidden"
               ref={fileInputRef}
@@ -155,7 +175,7 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onPgnUpload, isLoading })
               disabled={isLoading}
             >
               <Upload className="mr-2 h-4 w-4" />
-              Select PGN File
+              Upload PGN File
             </Button>
           </div>
         </form>
