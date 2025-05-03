@@ -1,3 +1,4 @@
+
 import { toast } from '@/hooks/use-toast';
 import { TimeRange, Platform } from '@/utils/types';
 import { Chess } from 'chess.js';
@@ -16,91 +17,101 @@ const convertTimeRangeToPeriod = (timeRange: TimeRange): string => {
 // Parse PGN content and extract games
 export const parsePgnContent = (pgnContent: string): any[] => {
   const games: any[] = [];
-  let currentGame = '';
-  const lines = pgnContent.split('\n');
+  // Split the PGN content by the standard separator for new games
+  const gameTexts = pgnContent.split(/\n\n\[Event /);
   
-  // Process each line of the PGN file
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+  // Process each game
+  for (let i = 0; i < gameTexts.length; i++) {
+    let gameText = gameTexts[i];
     
-    // Empty line marks the end of headers section and start of moves
-    if (line.trim() === '' && currentGame.trim() !== '') {
-      // If we have a line with [Event, it's the start of a new game
-      if (i + 1 < lines.length && lines[i+1].trim().startsWith('[Event')) {
-        try {
-          // Try to parse and extract game information
-          const chess = new Chess();
-          chess.loadPgn(currentGame);
-          addParsedGameToCollection(chess, currentGame, games);
-        } catch (e) {
-          console.error("Error parsing game:", e);
-          // Continue with next game
-        }
-        
-        // Reset for next game
-        currentGame = '';
-      } else {
-        // This is just the empty line between headers and moves - continue
-        currentGame += line + '\n';
-      }
-    } else {
-      currentGame += line + '\n';
+    // For all games except the first one, we need to add back the [Event tag
+    if (i > 0) {
+      gameText = '[Event ' + gameText;
     }
-  }
-  
-  // Handle the last game in the file
-  if (currentGame.trim() !== '') {
+    
+    // Skip empty games
+    if (!gameText.trim()) continue;
+    
+    // Skip fragments that don't look like a game
+    if (!gameText.includes('[') || !gameText.includes(']')) continue;
+    
     try {
+      console.log(`Parsing game ${i+1}...`);
+      
+      // Create a new Chess instance for each game
       const chess = new Chess();
-      chess.loadPgn(currentGame);
-      addParsedGameToCollection(chess, currentGame, games);
+      
+      // Load PGN - the chess.js library will handle the parsing
+      // chess.js will strip comments and clock annotations automatically
+      try {
+        chess.loadPgn(gameText, { sloppy: true });
+        console.log(`Game ${i+1} loaded successfully`);
+      } catch (parseError) {
+        console.error(`Error loading game ${i+1}:`, parseError);
+        console.log(`Attempting cleanup of problematic PGN for game ${i+1}`);
+        
+        // Perform additional cleanup if standard loading fails
+        let cleanedPgn = gameText
+          .replace(/\{[^}]*\}/g, '') // Remove comments in curly braces
+          .replace(/%[^\s\n]*/g, '') // Remove %eval, %clk annotations
+          .replace(/\$\d+/g, '');    // Remove numeric annotation glyphs
+        
+        try {
+          chess.loadPgn(cleanedPgn, { sloppy: true });
+          console.log(`Game ${i+1} loaded after cleanup`);
+        } catch (secondError) {
+          console.error(`Failed to load game ${i+1} even after cleanup:`, secondError);
+          continue; // Skip this game
+        }
+      }
+      
+      // Extract headers
+      const headers = chess.header();
+      
+      // Determine result
+      let result = 'draw';
+      if (headers.Result === '1-0') result = 'win';
+      else if (headers.Result === '0-1') result = 'loss';
+      
+      // Determine player color (simplified, assuming White is the player)
+      const playerColor = 'white'; // Default assumption
+      
+      // Create game object
+      const gameObj = {
+        event: headers.Event || 'Unknown Event',
+        site: headers.Site || 'Unknown Site',
+        date: headers.Date || 'Unknown Date',
+        white: { 
+          username: headers.White || 'Unknown White', 
+          rating: headers.WhiteElo || '?',
+          result: headers.Result === '1-0' ? 'win' : (headers.Result === '0-1' ? 'loss' : 'draw')
+        },
+        black: { 
+          username: headers.Black || 'Unknown Black', 
+          rating: headers.BlackElo || '?',
+          result: headers.Result === '0-1' ? 'win' : (headers.Result === '1-0' ? 'loss' : 'draw')
+        },
+        result,
+        time_control: headers.TimeControl || 'Unknown',
+        termination: headers.Termination || '',
+        opening: headers.Opening ? { name: headers.Opening } : { name: 'Unknown Opening' },
+        moves: chess.history({ verbose: true }),
+        pgn: chess.pgn(),
+        fen: chess.fen()
+      };
+      
+      // Add game to collection
+      games.push(gameObj);
+      
     } catch (e) {
-      console.error("Error parsing last game:", e);
+      console.error("Error processing game:", e);
+      // Continue with next game
     }
   }
   
+  console.log(`Successfully parsed ${games.length} games from PGN content`);
   return games;
 };
-
-// Helper function to add a parsed game to the collection
-function addParsedGameToCollection(chess: Chess, pgn: string, games: any[]) {
-  // Extract relevant game data
-  const headers = chess.header();
-  const moves = chess.history({ verbose: true });
-  
-  // Determine player color and result
-  const result = headers.Result;
-  let playerColor: 'white' | 'black' = 'white'; // Default
-  
-  // Create a simplified game object
-  const gameObj = {
-    event: headers.Event || 'Unknown Event',
-    site: headers.Site || 'Unknown Site',
-    date: headers.Date || 'Unknown Date',
-    white: { 
-      username: headers.White || 'Unknown White', 
-      rating: headers.WhiteElo || '?',
-      result: result === '1-0' ? 'win' : (result === '0-1' ? 'loss' : 'draw')
-    },
-    black: { 
-      username: headers.Black || 'Unknown Black', 
-      rating: headers.BlackElo || '?',
-      result: result === '0-1' ? 'win' : (result === '1-0' ? 'loss' : 'draw')
-    },
-    result: playerColor === 'white' ? 
-      (result === '1-0' ? 'win' : (result === '0-1' ? 'loss' : 'draw')) : 
-      (result === '0-1' ? 'win' : (result === '1-0' ? 'loss' : 'draw')),
-    timeControl: headers.TimeControl || 'Unknown',
-    termination: headers.Termination || '',
-    opening: headers.Opening ? { name: headers.Opening } : { name: 'Unknown Opening' },
-    moves: moves,
-    pgn: pgn,
-    fen: chess.fen()
-  };
-  
-  // Add game to the collection
-  games.push(gameObj);
-}
 
 // Download PGN file for Chess.com user
 const downloadChessComPGN = async (

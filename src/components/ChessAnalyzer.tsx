@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -117,12 +118,41 @@ const ChessAnalyzer: React.FC = () => {
       
       // Set user info for uploaded PGN
       // Try to determine username from the games, fallback to "PGN User"
-      const firstGameWhite = games[0]?.white?.username || "Unknown";
-      const firstGameBlack = games[0]?.black?.username || "Unknown";
+      let username = "PGN User";
       
-      const uploadUserInfo = {
-        username: firstGameWhite !== "Unknown White" ? firstGameWhite : 
-                 (firstGameBlack !== "Unknown Black" ? firstGameBlack : "PGN User"),
+      // Try to find a consistent user in the games
+      if (games.length > 0) {
+        const whitePlayers = games.map(g => g.white && g.white.username ? g.white.username : null).filter(Boolean);
+        const blackPlayers = games.map(g => g.black && g.black.username ? g.black.username : null).filter(Boolean);
+        
+        // Find the most common username
+        const allPlayers = [...whitePlayers, ...blackPlayers];
+        const playerCounts: {[key: string]: number} = {};
+        
+        allPlayers.forEach(player => {
+          if (player && typeof player === 'string') {
+            playerCounts[player] = (playerCounts[player] || 0) + 1;
+          }
+        });
+        
+        // Find player with highest count
+        let maxCount = 0;
+        let mostCommonPlayer = "";
+        
+        for (const player in playerCounts) {
+          if (playerCounts[player] > maxCount) {
+            maxCount = playerCounts[player];
+            mostCommonPlayer = player;
+          }
+        }
+        
+        if (mostCommonPlayer) {
+          username = mostCommonPlayer;
+        }
+      }
+      
+      const uploadUserInfo: UserInfo = {
+        username: username,
         platform: "uploaded" as Platform
       };
       

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { Upload } from "lucide-react";
 import { toast } from '@/hooks/use-toast';
+import { Chess } from 'chess.js';
 
 interface UserFormProps {
   onSubmit: (userInfo: UserInfo, timeRange: TimeRange) => void;
@@ -40,24 +41,19 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onPgnUpload, isLoading })
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file extension - accept any text file that might contain PGN
-    if (!file.name.toLowerCase().endsWith('.pgn') && 
-        !file.type.includes('text') && 
-        file.type !== 'application/octet-stream') {
-      toast({
-        title: "Invalid file",
-        description: "Please upload a valid PGN file (.pgn extension)",
-        variant: "destructive",
-      });
-      return;
-    }
+    toast({
+      title: "Reading file",
+      description: "Processing your PGN file...",
+    });
 
     const reader = new FileReader();
     reader.onload = (event) => {
       if (event.target?.result) {
         const content = event.target.result as string;
-        // Check if the content looks like a PGN file (has Event tags)
-        if (!content.includes('[Event ')) {
+        console.log("PGN file loaded, size:", content.length);
+        
+        // Perform a basic validation check
+        if (!content.includes('[Event') || !content.includes('[Date')) {
           toast({
             title: "Invalid PGN format",
             description: "The file doesn't appear to be a valid PGN file",
@@ -66,14 +62,40 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onPgnUpload, isLoading })
           return;
         }
         
-        toast({
-          title: "File uploaded",
-          description: "Processing PGN file...",
-        });
-        
-        onPgnUpload(content);
+        try {
+          // Try to identify at least one valid game in the file
+          const gameSample = content.split('[Event')[1];
+          if (gameSample) {
+            const tempGame = `[Event${gameSample.split(/\n\n\[Event/)[0]}`;
+            const chess = new Chess();
+            
+            // If this doesn't throw an error, we have at least one valid game
+            chess.loadPgn(tempGame, { sloppy: true });
+            
+            toast({
+              title: "File accepted",
+              description: "Processing PGN file...",
+            });
+            
+            onPgnUpload(content);
+          } else {
+            toast({
+              title: "Invalid PGN format",
+              description: "Could not identify valid games in the file",
+              variant: "destructive",
+            });
+          }
+        } catch (e) {
+          console.error("Error validating PGN:", e);
+          toast({
+            title: "Error processing PGN",
+            description: "The file appears to be in an unsupported format",
+            variant: "destructive",
+          });
+        }
       }
     };
+    
     reader.onerror = () => {
       toast({
         title: "Error",
@@ -81,6 +103,8 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onPgnUpload, isLoading })
         variant: "destructive",
       });
     };
+    
+    // Read the file as text
     reader.readAsText(file, 'UTF-8');
   };
 
