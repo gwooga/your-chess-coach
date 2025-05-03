@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,8 +62,21 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onPgnUpload, isLoading })
           return;
         }
         
+        // Count how many games might be in the file by counting [Event occurrences
+        const potentialGameCount = (content.match(/\[Event /g) || []).length;
+        console.log(`Detected approximately ${potentialGameCount} games in the PGN file`);
+        
+        if (potentialGameCount === 0) {
+          toast({
+            title: "No games found",
+            description: "The file doesn't appear to contain any valid chess games",
+            variant: "destructive",
+          });
+          return;
+        }
+        
         try {
-          // Try to identify at least one valid game in the file
+          // Try to identify at least one valid game in the file to confirm format
           const gameSample = content.split('[Event')[1];
           if (gameSample) {
             const tempGame = `[Event${gameSample.split(/\n\n\[Event/)[0]}`;
@@ -79,7 +93,7 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onPgnUpload, isLoading })
             
             toast({
               title: "File accepted",
-              description: "Processing PGN file...",
+              description: `Processing ${potentialGameCount} games from PGN file...`,
             });
             
             onPgnUpload(content);

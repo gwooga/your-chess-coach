@@ -1,3 +1,4 @@
+
 import { toast } from '@/hooks/use-toast';
 import { TimeRange, Platform } from '@/utils/types';
 import { Chess } from 'chess.js';
@@ -13,11 +14,54 @@ const convertTimeRangeToPeriod = (timeRange: TimeRange): string => {
   }
 };
 
+// Helper function to parse PGN date format to JavaScript Date
+const parsePgnDate = (dateStr: string): Date | null => {
+  if (!dateStr || dateStr.includes('????')) return null;
+  
+  // Handle format like "2024.07.04"
+  const parts = dateStr.split('.');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // JavaScript months are 0-indexed
+    const day = parseInt(parts[2], 10);
+    if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+      return new Date(year, month, day);
+    }
+  }
+  return null;
+};
+
+// Filter games by time range
+const filterGamesByTimeRange = (games: any[], timeRange: TimeRange): any[] => {
+  if (timeRange === 'all') return games;
+  
+  const now = new Date();
+  let cutoffDate = new Date();
+  
+  if (timeRange === 'last30') {
+    cutoffDate.setDate(now.getDate() - 30);
+  } else if (timeRange === 'last90') {
+    cutoffDate.setDate(now.getDate() - 90);
+  } else if (timeRange === 'last180') {
+    cutoffDate.setDate(now.getDate() - 180);
+  } else {
+    cutoffDate.setDate(now.getDate() - 365);
+  }
+  
+  return games.filter(game => {
+    const gameDate = parsePgnDate(game.date);
+    if (!gameDate) return true; // Include games with invalid dates
+    return gameDate >= cutoffDate;
+  });
+};
+
 // Parse PGN content and extract games
 export const parsePgnContent = (pgnContent: string): any[] => {
   const games: any[] = [];
   // Split the PGN content by the standard separator for new games
   const gameTexts = pgnContent.split(/\n\n\[Event /);
+  
+  console.log(`Found ${gameTexts.length} potential games in PGN content`);
   
   // Process each game
   for (let i = 0; i < gameTexts.length; i++) {
@@ -35,8 +79,6 @@ export const parsePgnContent = (pgnContent: string): any[] => {
     if (!gameText.includes('[') || !gameText.includes(']')) continue;
     
     try {
-      console.log(`Parsing game ${i+1}...`);
-      
       // Create a new Chess instance for each game
       const chess = new Chess();
       
@@ -49,10 +91,8 @@ export const parsePgnContent = (pgnContent: string): any[] => {
       // Load PGN - the chess.js library will handle the parsing
       try {
         chess.loadPgn(cleanedPgn);
-        console.log(`Game ${i+1} loaded successfully`);
       } catch (parseError) {
         console.error(`Error loading game ${i+1}:`, parseError);
-        console.log(`Attempting further cleanup of problematic PGN for game ${i+1}`);
         
         // Perform additional cleanup if standard loading fails
         cleanedPgn = cleanedPgn
@@ -61,7 +101,6 @@ export const parsePgnContent = (pgnContent: string): any[] => {
         
         try {
           chess.loadPgn(cleanedPgn);
-          console.log(`Game ${i+1} loaded after cleanup`);
         } catch (secondError) {
           console.error(`Failed to load game ${i+1} even after cleanup:`, secondError);
           continue; // Skip this game
@@ -76,7 +115,7 @@ export const parsePgnContent = (pgnContent: string): any[] => {
       if (headers.Result === '1-0') result = 'win';
       else if (headers.Result === '0-1') result = 'loss';
       
-      // Determine player color (simplified, assuming White is the player)
+      // Determine player color (will be improved in handlePgnUpload)
       const playerColor = 'white'; // Default assumption
       
       // Create game object

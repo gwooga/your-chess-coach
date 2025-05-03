@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -6,7 +7,7 @@ import CoachTab from './CoachTab';
 import OpeningsTab from './OpeningsTab';
 import { UserInfo, TimeRange, ChessVariant, UserAnalysis, Platform } from '@/utils/types';
 import { analyzeChessData } from '@/services/chessAnalysisService';
-import { downloadPGN, parsePgnContent } from '@/services/pgnDownloadService';
+import { downloadPGN, parsePgnContent, filterGamesByTimeRange } from '@/services/pgnDownloadService';
 import { Button } from "@/components/ui/button";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from '@/utils/ThemeProvider';
@@ -21,6 +22,7 @@ const ChessAnalyzer: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>("coach");
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const { theme, setTheme } = useTheme();
+  const [allUploadedGames, setAllUploadedGames] = useState<any[]>([]);
   
   const handleUserSubmit = async (info: UserInfo, selectedTimeRange: TimeRange) => {
     setIsLoading(true);
@@ -93,14 +95,13 @@ const ChessAnalyzer: React.FC = () => {
       });
       
       console.log("Parsing PGN content, length:", pgnContent.length);
-      console.log("First 200 chars:", pgnContent.substring(0, 200));
       
       // Parse the uploaded PGN content
-      const games = parsePgnContent(pgnContent);
+      const parsedGames = parsePgnContent(pgnContent);
       
-      console.log(`Parsed ${games.length} games from PGN content`);
+      console.log(`Parsed ${parsedGames.length} games from PGN content`);
       
-      if (games.length === 0) {
+      if (parsedGames.length === 0) {
         toast({
           title: "No games found",
           description: "No valid games found in the uploaded PGN file",
@@ -110,48 +111,23 @@ const ChessAnalyzer: React.FC = () => {
         return;
       }
       
+      // Store all the parsed games to filter later by time range
+      setAllUploadedGames(parsedGames);
+      
+      // Filter games by time range
+      const filteredGames = filterGamesByTimeRange(parsedGames, 'last90'); // Default time range
+      
       toast({
         title: "Processing complete",
-        description: `Successfully processed ${games.length} games. Starting analysis...`,
+        description: `Successfully processed ${parsedGames.length} games. Analyzing ${filteredGames.length} games from the selected time period...`,
       });
       
+      // Determine the player's username from the games
+      let playerUsername = determinePlayerUsername(parsedGames);
+      
       // Set user info for uploaded PGN
-      // Try to determine username from the games, fallback to "PGN User"
-      let username = "PGN User";
-      
-      // Try to find a consistent user in the games
-      if (games.length > 0) {
-        const whitePlayers = games.map(g => g.white && g.white.username ? g.white.username : null).filter(Boolean);
-        const blackPlayers = games.map(g => g.black && g.black.username ? g.black.username : null).filter(Boolean);
-        
-        // Find the most common username
-        const allPlayers = [...whitePlayers, ...blackPlayers];
-        const playerCounts: {[key: string]: number} = {};
-        
-        allPlayers.forEach(player => {
-          if (player && typeof player === 'string') {
-            playerCounts[player] = (playerCounts[player] || 0) + 1;
-          }
-        });
-        
-        // Find player with highest count
-        let maxCount = 0;
-        let mostCommonPlayer = "";
-        
-        for (const player in playerCounts) {
-          if (playerCounts[player] > maxCount) {
-            maxCount = playerCounts[player];
-            mostCommonPlayer = player;
-          }
-        }
-        
-        if (mostCommonPlayer) {
-          username = mostCommonPlayer;
-        }
-      }
-      
       const uploadUserInfo: UserInfo = {
-        username: username,
+        username: playerUsername,
         platform: "uploaded" as Platform
       };
       
@@ -160,7 +136,7 @@ const ChessAnalyzer: React.FC = () => {
       
       // Now analyze the data
       const analysis = await analyzeChessData({ 
-        games, 
+        games: filteredGames, 
         info: uploadUserInfo, 
         timeRange: 'last90' // Default time range for uploads
       });
@@ -169,7 +145,7 @@ const ChessAnalyzer: React.FC = () => {
       
       toast({
         title: "Analysis complete",
-        description: `Successfully analyzed ${games.length} games from your PGN file!`,
+        description: `Successfully analyzed ${filteredGames.length} games from your PGN file!`,
       });
     } catch (error) {
       console.error("Failed to process or analyze PGN data:", error);
@@ -183,6 +159,49 @@ const ChessAnalyzer: React.FC = () => {
     }
   };
 
+  // Helper function to determine player username from games
+  const determinePlayerUsername = (games: any[]): string => {
+    if (games.length === 0) return "PGN User";
+    
+    const whitePlayers: {[key: string]: number} = {};
+    const blackPlayers: {[key: string]: number} = {};
+    
+    // Count appearances of each player
+    games.forEach(game => {
+      if (game.white && game.white.username) {
+        whitePlayers[game.white.username] = (whitePlayers[game.white.username] || 0) + 1;
+      }
+      if (game.black && game.black.username) {
+        blackPlayers[game.black.username] = (blackPlayers[game.black.username] || 0) + 1;
+      }
+    });
+    
+    // Find players with highest counts
+    let mostCommonWhite = {name: "", count: 0};
+    let mostCommonBlack = {name: "", count: 0};
+    
+    for (const [name, count] of Object.entries(whitePlayers)) {
+      if (count > mostCommonWhite.count) {
+        mostCommonWhite = {name, count: count as number};
+      }
+    }
+    
+    for (const [name, count] of Object.entries(blackPlayers)) {
+      if (count > mostCommonBlack.count) {
+        mostCommonBlack = {name, count: count as number};
+      }
+    }
+    
+    // Return the player that appears most frequently
+    if (mostCommonWhite.count > mostCommonBlack.count) {
+      return mostCommonWhite.name;
+    } else if (mostCommonBlack.count > 0) {
+      return mostCommonBlack.name;
+    } else {
+      return "PGN User";
+    }
+  };
+
   const handleTimeRangeChange = async (value: TimeRange) => {
     if (!userInfo) return;
     
@@ -191,46 +210,73 @@ const ChessAnalyzer: React.FC = () => {
     setDownloadProgress(0);
     
     try {
-      toast({
-        title: "Updating time range",
-        description: `Downloading games for ${userInfo.username} with new time range...`,
-      });
-      
-      // Download the PGN data with the new time range
-      const games = await downloadPGN(
-        userInfo.username, 
-        userInfo.platform, 
-        value,
-        setDownloadProgress
-      );
-      
-      if (games.length === 0) {
+      // Handle different paths for uploaded PGN vs APIs
+      if (userInfo.platform === "uploaded" && allUploadedGames.length > 0) {
+        // For uploaded games, we filter the already parsed games by the new time range
+        const filteredGames = filterGamesByTimeRange(allUploadedGames, value);
+        
         toast({
-          title: "No games found",
-          description: `No games found for ${userInfo.username} on ${userInfo.platform} in this time range`,
-          variant: "destructive",
+          title: "Filtering games",
+          description: `Analyzing ${filteredGames.length} games from the selected time period...`,
         });
-        setIsLoading(false);
-        return;
+        
+        setDownloadProgress(100);
+        
+        // Analyze the filtered games
+        const analysis = await analyzeChessData({
+          games: filteredGames,
+          info: userInfo,
+          timeRange: value
+        });
+        
+        setUserAnalysis(analysis);
+        
+        toast({
+          title: "Analysis complete",
+          description: `Successfully analyzed ${filteredGames.length} games from your PGN file!`,
+        });
+      } else {
+        // For API platforms, download games with the new time range
+        toast({
+          title: "Updating time range",
+          description: `Downloading games for ${userInfo.username} with new time range...`,
+        });
+        
+        const games = await downloadPGN(
+          userInfo.username, 
+          userInfo.platform, 
+          value,
+          setDownloadProgress
+        );
+        
+        if (games.length === 0) {
+          toast({
+            title: "No games found",
+            description: `No games found for ${userInfo.username} on ${userInfo.platform} in this time range`,
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+        
+        toast({
+          title: "Download complete",
+          description: `Successfully downloaded ${games.length} games. Starting analysis...`,
+        });
+        
+        // Now analyze the data
+        const analysis = await analyzeChessData({ 
+          games, 
+          info: userInfo, 
+          timeRange: value 
+        });
+        setUserAnalysis(analysis);
+        
+        toast({
+          title: "Analysis complete",
+          description: `Successfully analyzed ${games.length} games for ${userInfo.username}!`,
+        });
       }
-      
-      toast({
-        title: "Download complete",
-        description: `Successfully downloaded ${games.length} games. Starting analysis...`,
-      });
-      
-      // Now analyze the data
-      const analysis = await analyzeChessData({ 
-        games, 
-        info: userInfo, 
-        timeRange: value 
-      });
-      setUserAnalysis(analysis);
-      
-      toast({
-        title: "Analysis complete",
-        description: `Successfully analyzed ${games.length} games for ${userInfo.username}!`,
-      });
     } catch (error) {
       console.error("Failed to fetch or analyze data:", error);
       toast({
