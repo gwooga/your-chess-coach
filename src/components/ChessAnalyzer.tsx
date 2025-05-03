@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import UserForm from './UserForm';
 import CoachTab from './CoachTab';
 import OpeningsTab from './OpeningsTab';
-import { UserInfo, TimeRange, ChessVariant, UserAnalysis } from '@/utils/types';
+import { UserInfo, TimeRange, ChessVariant, UserAnalysis, Platform } from '@/utils/types';
 import { analyzeChessData } from '@/services/chessAnalysisService';
 import { downloadPGN, parsePgnContent } from '@/services/pgnDownloadService';
 import { Button } from "@/components/ui/button";
