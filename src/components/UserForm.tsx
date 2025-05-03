@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,8 +68,14 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onPgnUpload, isLoading })
             const tempGame = `[Event${gameSample.split(/\n\n\[Event/)[0]}`;
             const chess = new Chess();
             
-            // If this doesn't throw an error, we have at least one valid game
-            chess.loadPgn(tempGame, { sloppy: true });
+            // Use Chess.js to validate, but without the sloppy option
+            // Instead we'll clean up the PGN text first
+            const cleanedPgn = tempGame
+              .replace(/\{[^}]*\}/g, '') // Remove comments in curly braces
+              .replace(/%[^\s\n]*/g, '') // Remove %eval, %clk annotations
+              .replace(/\$\d+/g, '');     // Remove numeric annotation glyphs
+            
+            chess.loadPgn(cleanedPgn);
             
             toast({
               title: "File accepted",

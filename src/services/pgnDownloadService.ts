@@ -1,4 +1,3 @@
-
 import { toast } from '@/hooks/use-toast';
 import { TimeRange, Platform } from '@/utils/types';
 import { Chess } from 'chess.js';
@@ -41,23 +40,27 @@ export const parsePgnContent = (pgnContent: string): any[] => {
       // Create a new Chess instance for each game
       const chess = new Chess();
       
+      // Clean the PGN before loading - remove comments and annotations
+      let cleanedPgn = gameText
+        .replace(/\{[^}]*\}/g, '') // Remove comments in curly braces
+        .replace(/%[^\s\n]*/g, '') // Remove %eval, %clk annotations
+        .replace(/\$\d+/g, '');    // Remove numeric annotation glyphs
+      
       // Load PGN - the chess.js library will handle the parsing
-      // chess.js will strip comments and clock annotations automatically
       try {
-        chess.loadPgn(gameText, { sloppy: true });
+        chess.loadPgn(cleanedPgn);
         console.log(`Game ${i+1} loaded successfully`);
       } catch (parseError) {
         console.error(`Error loading game ${i+1}:`, parseError);
-        console.log(`Attempting cleanup of problematic PGN for game ${i+1}`);
+        console.log(`Attempting further cleanup of problematic PGN for game ${i+1}`);
         
         // Perform additional cleanup if standard loading fails
-        let cleanedPgn = gameText
-          .replace(/\{[^}]*\}/g, '') // Remove comments in curly braces
-          .replace(/%[^\s\n]*/g, '') // Remove %eval, %clk annotations
-          .replace(/\$\d+/g, '');    // Remove numeric annotation glyphs
+        cleanedPgn = cleanedPgn
+          .replace(/\([^)]*\)/g, '') // Remove variations in parentheses
+          .replace(/\s\d+\s?\.+\s?/g, ' '); // Remove move numbers
         
         try {
-          chess.loadPgn(cleanedPgn, { sloppy: true });
+          chess.loadPgn(cleanedPgn);
           console.log(`Game ${i+1} loaded after cleanup`);
         } catch (secondError) {
           console.error(`Failed to load game ${i+1} even after cleanup:`, secondError);
