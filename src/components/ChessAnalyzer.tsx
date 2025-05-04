@@ -1,16 +1,18 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { analyzeChessData } from '@/services/chessAnalysisService';
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
 import { UserAnalysis, ChessVariant, UserInfo, TimeRange } from '@/utils/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import OpeningsTab from './OpeningsTab';
 import TimeAnalysisTab from './TimeAnalysisTab';
 import MoveQualityTab from './MoveQualityTab';
 import CoachTab from './CoachTab';
 
-interface ChessAnalyzerProps {
+export interface ChessAnalyzerProps {
   onClose: () => void;
   games: any[];
   userInfo: UserInfo;
@@ -50,6 +52,13 @@ const ChessAnalyzer: React.FC<ChessAnalyzerProps> = ({ onClose, games, userInfo,
   
   return (
     <div className="pt-6">
+      <div className="mb-6">
+        <Button variant="outline" size="sm" onClick={onClose}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Search
+        </Button>
+      </div>
+
       {isLoading && (
         <div className="flex justify-center items-center space-x-2">
           <Loader2 className="animate-spin h-6 w-6" />
@@ -85,7 +94,7 @@ const ChessAnalyzer: React.FC<ChessAnalyzerProps> = ({ onClose, games, userInfo,
           <Tabs defaultValue="coach">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="coach">Coach</TabsTrigger>
-              <TabsTrigger value="all">Openings</TabsTrigger>
+              <TabsTrigger value="openings">Openings</TabsTrigger>
               <TabsTrigger value="time">Time Analysis</TabsTrigger>
               <TabsTrigger value="moves">Move Quality</TabsTrigger>
             </TabsList>
@@ -94,7 +103,7 @@ const ChessAnalyzer: React.FC<ChessAnalyzerProps> = ({ onClose, games, userInfo,
               <CoachTab analysis={userAnalysis} variant={variant} />
             </TabsContent>
             
-            <TabsContent value="all" className="mt-0">
+            <TabsContent value="openings" className="mt-0">
               <OpeningsTab data={userAnalysis.openings[variant]} variant={variant} ratings={userAnalysis.ratings} />
             </TabsContent>
 
