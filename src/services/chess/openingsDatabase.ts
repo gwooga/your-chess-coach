@@ -22,6 +22,7 @@ export const openingNames: Record<string, string> = {
   "e4 d6": "Pirc Defense",
   "e4 g6": "Modern Defense",
   "e4 Nf6": "Alekhine's Defense",
+  "e4 b6": "Owen's Defense",
   
   // Black responses to d4
   "d4 d5": "Closed Game",
@@ -29,6 +30,19 @@ export const openingNames: Record<string, string> = {
   "d4 f5": "Dutch Defense",
   "d4 c5": "Benoni Defense",
   "d4 e6": "French Defense Structure",
+  "d4 g6": "King's Indian Defense",
+  "d4 d6": "Old Indian Defense",
+  "d4 b6": "Queen's Indian Defense",
+  "d4 c6": "Slav Defense",
+  
+  // Black responses to c4
+  "c4 e5": "English Opening, Reversed Sicilian",
+  "c4 c5": "English Opening, Symmetrical Variation",
+  "c4 Nf6": "English Opening, Knight's Variation",
+  
+  // Black responses to Nf3
+  "Nf3 Nf6": "Réti Opening, King's Indian Attack",
+  "Nf3 d5": "Réti Opening, Queen's Pawn Defense",
   
   // Deeper openings - e4
   "e4 e5 Nf3": "King's Knight Opening",
@@ -57,6 +71,18 @@ export const openingNames: Record<string, string> = {
   "d4 Nf6 c4 g6": "King's Indian Defense",
   "d4 Nf6 c4 c5": "Benoni Defense",
   "d4 Nf6 Bf4": "London System",
+  
+  // Add more common openings for black pieces
+  "e4 c5": "Sicilian Defense",
+  "e4 e6": "French Defense",
+  "e4 e5": "Open Game",
+  "e4 c6": "Caro-Kann Defense",
+  "e4 d6": "Pirc Defense",
+  "e4 g6": "Modern Defense",
+  "d4 d5": "Queen's Pawn Game",
+  "d4 Nf6": "Indian Defense",
+  "d4 f5": "Dutch Defense",
+  "c4 e5": "English Opening",
 };
 
 // Get opening name based on sequence

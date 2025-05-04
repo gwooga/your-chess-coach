@@ -28,24 +28,28 @@ export const extractOpeningSequences = (games: any[]): Record<string, any> => {
   let totalBlackGames = 0;
   
   games.forEach(game => {
-    // Extract the player's color and opponent
-    let playerColor = 'white';
+    // Extract the player's color
+    let playerColor = game.playerColor || 'white';
     
-    // If the player username matches the black player, adjust color
-    if (game.black && game.black.username && game.white && game.white.username) {
+    // If playerColor is not already determined
+    if (!game.playerColor) {
       // For Chess.com games
-      if (typeof game.black.username === 'string' && 
-          typeof game.white.username === 'string' &&
-          game.black.username.toLowerCase() === game.white.username.toLowerCase()) {
-        playerColor = 'black';
-      }
-    } else if (game.players) {
+      if (game.black && game.black.username && 
+          game.white && game.white.username) {
+        if (typeof game.black.username === 'string' && 
+            typeof game.white.username === 'string' &&
+            game.black.username.toLowerCase() === game.username?.toLowerCase()) {
+          playerColor = 'black';
+        }
+      } 
       // For Lichess games
-      const whiteUser = game.players.white.user;
-      const blackUser = game.players.black.user;
-      if (whiteUser && blackUser && blackUser.name && whiteUser.name && 
-          blackUser.name.toLowerCase() === whiteUser.name.toLowerCase()) {
-        playerColor = 'black';
+      else if (game.players) {
+        const blackUser = game.players.black.user;
+        const whiteUser = game.players.white.user;
+        if (blackUser && whiteUser && blackUser.name && 
+            blackUser.name.toLowerCase() === game.username?.toLowerCase()) {
+          playerColor = 'black';
+        }
       }
     }
     
@@ -110,7 +114,11 @@ export const extractOpeningSequences = (games: any[]): Record<string, any> => {
 };
 
 // Analyze opening data to find most meaningful openings
-export const findMeaningfulOpenings = (sequences: Record<string, any>, totalWhiteGames: number, totalBlackGames: number): {
+export const findMeaningfulOpenings = (
+  sequences: Record<string, any>, 
+  totalWhiteGames: number, 
+  totalBlackGames: number
+): {
   meaningfulWhite: OpeningData[];
   meaningfulBlack: OpeningData[];
   meaningfulCombined: OpeningData[];
@@ -136,7 +144,7 @@ export const findMeaningfulOpenings = (sequences: Record<string, any>, totalWhit
       
       for (const [seq, data] of Object.entries(sequences[key])) {
         // Only consider sequences with enough games
-        if ((data as OpeningSeq).games >= 5) {
+        if ((data as OpeningSeq).games >= 3) {
           allSequences[seq] = data as OpeningSeq;
         }
       }

@@ -43,7 +43,7 @@ export const fetchLichessGames = async (
     
     const since = cutoffDate.getTime();
     
-    // Construct the API URL with parameters
+    // Construct the API URL with parameters - ensuring we're getting opening data
     const url = `${BASE_URL}/games/user/${username}?since=${since}&max=${maxGames}&perfType=bullet,blitz,rapid,classical&opening=true&analyzed=true&pgnInJson=true`;
     
     const response = await fetch(url);
@@ -58,8 +58,38 @@ export const fetchLichessGames = async (
       .split('\n')
       .filter(line => line.trim() !== '')
       .map(line => JSON.parse(line));
+
+    // Add proper processing for lichess games to ensure we have the right format
+    const processedGames = games.map(game => {
+      // Add player color determination
+      let playerColor = 'white';
+      if (game.players) {
+        const blackUser = game.players.black.user;
+        if (blackUser && blackUser.name && blackUser.name.toLowerCase() === username.toLowerCase()) {
+          playerColor = 'black';
+        }
+      }
+      
+      // Map the result
+      let result = 'draw';
+      if (playerColor === 'white' && game.winner === 'white') result = 'win';
+      else if (playerColor === 'black' && game.winner === 'black') result = 'win';
+      else if (game.winner) result = 'loss';
+      
+      return {
+        ...game,
+        playerColor,
+        result
+      };
+    });
     
-    return games;
+    console.log(`Fetched ${processedGames.length} games from Lichess for ${username}`);
+    
+    if (processedGames.length === 0) {
+      throw new Error('No games found for this user in the selected time range');
+    }
+    
+    return processedGames;
   } catch (error) {
     console.error('Error fetching Lichess games:', error);
     throw error;
@@ -109,7 +139,7 @@ export const fetchLichessData = async (userInfo: UserInfo, timeRange: TimeRange)
     console.error('Error in fetchLichessData:', error);
     toast({
       title: "Error fetching Lichess data",
-      description: "Failed to fetch or analyze Lichess games. Please check the username and try again.",
+      description: error instanceof Error ? error.message : "Failed to fetch or analyze Lichess games.",
       variant: "destructive",
     });
     throw error;

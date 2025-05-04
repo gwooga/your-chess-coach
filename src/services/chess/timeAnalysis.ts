@@ -27,31 +27,41 @@ export const generateTimeAnalysis = (games: any[]): {
     '20:00-23:59': { slot: '20:00-23:59', games: 0, wins: 0, draws: 0, losses: 0, winRate: 0 }
   };
   
+  // Flag to track if we have time data
+  let hasTimeData = false;
+  
   // Process each game
   games.forEach(game => {
     // Get game timestamp and result
-    let timestamp: number = Date.now(); // Default to now
+    let timestamp: number | null = null;
     let result: 'win' | 'loss' | 'draw' = 'draw'; // Default
     
     // Get timestamp
     if (game.end_time) {
       // Chess.com format
       timestamp = game.end_time * 1000; // Convert to milliseconds
+      hasTimeData = true;
     } else if (game.createdAt) {
       // Lichess format
       timestamp = game.createdAt;
+      hasTimeData = true;
     } else if (game.date) {
       // Try to parse from date header
       try {
         const dateStr = game.date.replace(/\./g, '-');
         timestamp = new Date(dateStr).getTime();
+        hasTimeData = true;
       } catch (e) {
         // Use default
+        timestamp = null;
       }
     }
     
     // Get result
     result = game.result || 'draw';
+    
+    // Skip if we don't have timestamp data
+    if (timestamp === null) return;
     
     // Create a date object
     const date = new Date(timestamp);
@@ -95,9 +105,14 @@ export const generateTimeAnalysis = (games: any[]): {
     data.winRate = data.games > 0 ? parseFloat(((data.wins / data.games) * 100).toFixed(1)) : 0;
   }
   
+  // Filter out slots with no games if we have time data
+  const filteredTimePerformance = hasTimeData 
+    ? Object.values(timeSlotMap).filter(slot => slot.games > 0) 
+    : [];
+  
   return {
-    dayPerformance: Object.values(dayMap),
-    timePerformance: Object.values(timeSlotMap)
+    dayPerformance: Object.values(dayMap).filter(day => day.games > 0),
+    timePerformance: filteredTimePerformance
   };
 };
 
@@ -111,15 +126,31 @@ export const findBestAndWorstPerformances = (
   bestDay: DayPerformance | null;
   worstDay: DayPerformance | null;
 } => {
+  // Only process time slots if we have at least 2 with enough games
+  const validTimeSlots = timePerformance.filter(slot => slot.games >= 5);
+  
   // Find best and worst time slots for insights
-  const sortedTimeSlots = [...timePerformance].sort((a, b) => b.winRate - a.winRate);
-  const bestTimeSlot = sortedTimeSlots.length > 0 ? sortedTimeSlots[0] : null;
-  const worstTimeSlot = sortedTimeSlots.length > 0 ? sortedTimeSlots[sortedTimeSlots.length - 1] : null;
+  let bestTimeSlot = null;
+  let worstTimeSlot = null;
+  
+  if (validTimeSlots.length >= 2) {
+    const sortedTimeSlots = [...validTimeSlots].sort((a, b) => b.winRate - a.winRate);
+    bestTimeSlot = sortedTimeSlots[0];
+    worstTimeSlot = sortedTimeSlots[sortedTimeSlots.length - 1];
+  }
+  
+  // Only process days if we have at least 2 with enough games
+  const validDays = dayPerformance.filter(day => day.games >= 5);
   
   // Find best and worst days for insights
-  const sortedDays = [...dayPerformance].sort((a, b) => b.winRate - a.winRate);
-  const bestDay = sortedDays.length > 0 ? sortedDays[0] : null;
-  const worstDay = sortedDays.length > 0 ? sortedDays[sortedDays.length - 1] : null;
+  let bestDay = null;
+  let worstDay = null;
+  
+  if (validDays.length >= 2) {
+    const sortedDays = [...validDays].sort((a, b) => b.winRate - a.winRate);
+    bestDay = sortedDays[0];
+    worstDay = sortedDays[sortedDays.length - 1];
+  }
 
   return {
     bestTimeSlot,
