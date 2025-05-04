@@ -55,25 +55,36 @@ export const openingNames: Record<string, string> = {
   "e4 c5 Nf3 e6": "Sicilian Scheveningen",
   "e4 c5 c3": "Sicilian Alapin",
   "e4 c5 b4": "Sicilian Wing Gambit",
-  "e4 e6 d4": "French Defense",
-  "e4 e6 d4 d5": "French Defense Main Line",
-  "e4 d5 exd5": "Scandinavian Defense",
-  "e4 c6 d4": "Caro-Kann Defense",
-  "e4 c6 d4 d5": "Caro-Kann Main Line",
+  "e4 e6 d4": "French Defense Main Line",
+  "e4 e6 d4 d5": "French Defense Classical",
+  "e4 d5 exd5": "Scandinavian Main Line",
+  "e4 c6 d4": "Caro-Kann Main Line",
+  "e4 c6 d4 d5": "Caro-Kann Classical",
   
   // Deeper openings - d4
   "d4 d5 c4": "Queen's Gambit",
   "d4 d5 c4 e6": "Queen's Gambit Declined",
-  "d4 d5 c4 c6": "Slav Defense",
+  "d4 d5 c4 c6": "Slav Defense Main Line",
   "d4 d5 c4 dxc4": "Queen's Gambit Accepted",
-  "d4 Nf6 c4": "Indian Defense",
-  "d4 Nf6 c4 e6": "Queen's Indian Defense",
-  "d4 Nf6 c4 g6": "King's Indian Defense",
-  "d4 Nf6 c4 c5": "Benoni Defense",
-  "d4 Nf6 Bf4": "London System",
+  "d4 Nf6 c4": "Indian Defense Complex",
+  "d4 Nf6 c4 e6": "Queen's Indian Setup",
+  "d4 Nf6 c4 g6": "King's Indian Setup",
+  "d4 Nf6 c4 c5": "Benoni Formation",
+  "d4 Nf6 Bf4": "London System Main Line",
   
-  // Common black responses (without duplicates)
-  // Removed duplicate entries here to fix the error
+  // Additional common openings for both colors
+  "e4 c5 Nc3": "Sicilian, Closed Variation",
+  "e4 e5 Nc3": "Vienna Game",
+  "d4 d5 Bf4": "London System",
+  "Nf3 d5 c4": "Réti Gambit",
+  "c4 e5 Nc3": "English, Reversed Sicilian",
+  "g3 d5 Bg2": "King's Fianchetto",
+  "e4 Nc6 d4": "Nimzowitsch Defense",
+  "e4 d6 d4": "Pirc Defense Main Line",
+  "e4 g6 d4": "Modern Defense Main Line",
+  "d4 g6 c4": "King's Indian Formation",
+  "d4 f5 g3": "Dutch, Leningrad Variation",
+  "c4 f5": "Dutch Against English"
 };
 
 // Get opening name based on sequence
