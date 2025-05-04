@@ -765,6 +765,16 @@ export const analyzeChessData = async (data: {
     // Generate time analysis
     const { dayPerformance, timePerformance } = generateTimeAnalysis(games);
     
+    // Find best and worst time slots for insights
+    const sortedTimeSlots = [...timePerformance].sort((a, b) => b.winRate - a.winRate);
+    const bestTimeSlot = sortedTimeSlots.length > 0 ? sortedTimeSlots[0] : null;
+    const worstTimeSlot = sortedTimeSlots.length > 0 ? sortedTimeSlots[sortedTimeSlots.length - 1] : null;
+    
+    // Find best and worst days for insights
+    const sortedDays = [...dayPerformance].sort((a, b) => b.winRate - a.winRate);
+    const bestDay = sortedDays.length > 0 ? sortedDays[0] : null;
+    const worstDay = sortedDays.length > 0 ? sortedDays[sortedDays.length - 1] : null;
+    
     // Create phase accuracy data (in a real app, this would come from actual game analysis)
     const phaseAccuracy: PhaseAccuracy = {
       opening: 68 + Math.floor(Math.random() * 10),
