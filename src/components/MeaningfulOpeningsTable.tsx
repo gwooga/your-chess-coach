@@ -7,6 +7,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  shouldDisplayTable
 } from "@/components/ui/table";
 import {
   Popover,
@@ -21,22 +22,21 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 
 interface MeaningfulOpeningsTableProps {
   data: OpeningData[];
-  title: string;
   totalGames: number;
 }
 
-type SortField = 'games' | 'wins' | 'draws' | 'losses' | 'score';
+type SortField = 'impact' | 'games' | 'winsPercentage' | 'drawsPercentage' | 'lossesPercentage' | 'gamesPercentage';
 
-const MeaningfulOpeningsTable: React.FC<MeaningfulOpeningsTableProps> = ({ data, title, totalGames }) => {
-  const [sortField, setSortField] = useState<SortField>('score');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+const MeaningfulOpeningsTable: React.FC<MeaningfulOpeningsTableProps> = ({ data, totalGames }) => {
+  const [sortField, setSortField] = useState<SortField>('impact');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
       setSortField(field);
-      setSortOrder('desc');
+      setSortOrder('asc');
     }
   };
 
@@ -46,13 +46,14 @@ const MeaningfulOpeningsTable: React.FC<MeaningfulOpeningsTableProps> = ({ data,
   };
   
   const sortedData = [...data].sort((a, b) => {
-    const aValue = (a as any)[sortField] || 0;
-    const bValue = (b as any)[sortField] || 0;
-    
-    if (sortOrder === 'asc') {
-      return aValue - bValue;
+    if (sortField === 'impact') {
+      const aValue = a.impact || 0;
+      const bValue = b.impact || 0;
+      return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
     } else {
-      return bValue - aValue;
+      const aValue = (a as any)[sortField] || 0;
+      const bValue = (b as any)[sortField] || 0;
+      return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
     }
   });
 
@@ -94,62 +95,50 @@ const MeaningfulOpeningsTable: React.FC<MeaningfulOpeningsTableProps> = ({ data,
   
   return (
     <div className="my-4 overflow-x-auto">
-      <h3 className="text-lg font-semibold mb-2">{title} <span className="text-sm font-normal text-gray-500">({totalGames} games)</span></h3>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Opening</TableHead>
-            <TableHead>Sequence</TableHead>
-            <TableHead className="cursor-pointer" onClick={() => handleSort('games')}>
-              Games {getSortIcon('games')}
-            </TableHead>
-            <TableHead className="cursor-pointer flex items-center gap-1" onClick={() => handleSort('score')}>
-              Impact {getSortIcon('score')}
+            <TableHead className="cursor-pointer" onClick={() => handleSort('impact')}>
+              Impact {getSortIcon('impact')}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                  <Info className="h-4 w-4 text-muted-foreground cursor-help ml-1" />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
-                  <p>Impact score reflects how significant this opening is to your results. It combines frequency (how often you play it) with performance (win rate).</p>
+                  <p>Impact ranks openings by importance to your results. It combines how often you play an opening with your performance in it. 
+                  Higher numbers (closer to 1) indicate openings that have more influence on your overall results.</p>
                 </TooltipContent>
               </Tooltip>
             </TableHead>
-            <TableHead>Win/Draw/Lose</TableHead>
+            <TableHead>Color</TableHead>
+            <TableHead>Opening</TableHead>
+            <TableHead>Sequence</TableHead>
+            <TableHead className="cursor-pointer" onClick={() => handleSort('gamesPercentage')}>
+              Games (N) {getSortIcon('gamesPercentage')}
+            </TableHead>
+            <TableHead className="cursor-pointer text-green-600" onClick={() => handleSort('winsPercentage')}>
+              Wins (%) {getSortIcon('winsPercentage')}
+            </TableHead>
+            <TableHead className="cursor-pointer text-gray-600" onClick={() => handleSort('drawsPercentage')}>
+              Draws (%) {getSortIcon('drawsPercentage')}
+            </TableHead>
+            <TableHead className="cursor-pointer text-red-600" onClick={() => handleSort('lossesPercentage')}>
+              Losses (%) {getSortIcon('lossesPercentage')}
+            </TableHead>
             <TableHead>Board</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {sortedData.map((opening, index) => (
             <TableRow key={index}>
+              <TableCell>{opening.impact || index + 1}</TableCell>
+              <TableCell>{opening.color?.charAt(0).toUpperCase() + opening.color?.slice(1) || '-'}</TableCell>
               <TableCell className="font-medium">{opening.name || "Unnamed Opening"}</TableCell>
               <TableCell className="font-mono text-xs">{formatSequence(opening.sequence)}</TableCell>
               <TableCell>{opening.gamesPercentage}%</TableCell>
-              <TableCell>
-                {(opening as any).score ? parseFloat((opening as any).score.toFixed(1)) : 'N/A'}
-              </TableCell>
-              <TableCell>
-                <div className="w-full bg-gray-200 rounded-full h-2.5">
-                  <div
-                    className="h-2.5 rounded-full"
-                    style={{
-                      width: `100%`,
-                      background: `linear-gradient(to right, 
-                        #4ade80 0%, 
-                        #4ade80 ${opening.winsPercentage}%, 
-                        #a3a3a3 ${opening.winsPercentage}%, 
-                        #a3a3a3 ${opening.winsPercentage + opening.drawsPercentage}%,
-                        #ea384c ${opening.winsPercentage + opening.drawsPercentage}%,
-                        #ea384c 100%
-                      )`
-                    }}
-                  ></div>
-                </div>
-                <div className="flex justify-between text-xs mt-1">
-                  <span className="text-emerald-600">{opening.winsPercentage}%</span>
-                  <span className="text-gray-500">{opening.drawsPercentage}%</span>
-                  <span className="text-red-600">{opening.lossesPercentage}%</span>
-                </div>
-              </TableCell>
+              <TableCell className="text-green-600 font-medium">{opening.winsPercentage}%</TableCell>
+              <TableCell className="text-gray-600">{opening.drawsPercentage}%</TableCell>
+              <TableCell className="text-red-600 font-medium">{opening.lossesPercentage}%</TableCell>
               <TableCell>
                 <Popover>
                   <PopoverTrigger asChild>
@@ -157,10 +146,10 @@ const MeaningfulOpeningsTable: React.FC<MeaningfulOpeningsTableProps> = ({ data,
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="center">
                     <div className="p-4">
-                      <ChessBoard fen={opening.fen} side={title.includes('White') ? 'white' : 'black'} />
+                      <ChessBoard fen={opening.fen} side={opening.color || 'white'} />
                       <div className="mt-2 text-center">
                         <a 
-                          href={getLichessUrl(opening.fen, title.includes('White') ? 'white' : 'black')} 
+                          href={getLichessUrl(opening.fen, opening.color || 'white')} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="text-sm text-chess-purple hover:underline"

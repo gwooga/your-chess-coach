@@ -7,6 +7,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  shouldDisplayTable
 } from "@/components/ui/table";
 import {
   Popover,
@@ -17,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import ChessBoard from './ChessBoard';
 import { OpeningData } from '@/utils/types';
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface OpeningsTableProps {
   data: OpeningData[];
@@ -25,7 +25,7 @@ interface OpeningsTableProps {
   totalGames: number;
 }
 
-type SortField = 'games' | 'wins' | 'draws' | 'losses';
+type SortField = 'games' | 'wins' | 'draws' | 'losses' | 'winsPercentage' | 'drawsPercentage' | 'lossesPercentage';
 
 const OpeningsTable: React.FC<OpeningsTableProps> = ({ data, title, totalGames }) => {
   const [sortField, setSortField] = useState<SortField>('games');
@@ -114,7 +114,15 @@ const OpeningsTable: React.FC<OpeningsTableProps> = ({ data, title, totalGames }
               <TableHead className="cursor-pointer" onClick={() => handleSort('games')}>
                 Games {getSortIcon('games')}
               </TableHead>
-              <TableHead>Win/Draw/Lose</TableHead>
+              <TableHead className="cursor-pointer text-green-600" onClick={() => handleSort('winsPercentage')}>
+                Wins {getSortIcon('winsPercentage')}
+              </TableHead>
+              <TableHead className="cursor-pointer text-gray-600" onClick={() => handleSort('drawsPercentage')}>
+                Draws {getSortIcon('drawsPercentage')}
+              </TableHead>
+              <TableHead className="cursor-pointer text-red-600" onClick={() => handleSort('lossesPercentage')}>
+                Losses {getSortIcon('lossesPercentage')}
+              </TableHead>
               <TableHead>Board</TableHead>
             </TableRow>
           </TableHeader>
@@ -124,29 +132,9 @@ const OpeningsTable: React.FC<OpeningsTableProps> = ({ data, title, totalGames }
                 <TableCell className="font-medium">{opening.name || "Unnamed Opening"}</TableCell>
                 <TableCell className="font-mono text-xs">{formatSequence(opening.sequence)}</TableCell>
                 <TableCell>{opening.gamesPercentage}%</TableCell>
-                <TableCell>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div
-                      className="h-2.5 rounded-full"
-                      style={{
-                        width: `100%`,
-                        background: `linear-gradient(to right, 
-                          #4ade80 0%, 
-                          #4ade80 ${opening.winsPercentage}%, 
-                          #a3a3a3 ${opening.winsPercentage}%, 
-                          #a3a3a3 ${opening.winsPercentage + opening.drawsPercentage}%,
-                          #ea384c ${opening.winsPercentage + opening.drawsPercentage}%,
-                          #ea384c 100%
-                        )`
-                      }}
-                    ></div>
-                  </div>
-                  <div className="flex justify-between text-xs mt-1">
-                    <span className="text-emerald-600">{opening.winsPercentage}%</span>
-                    <span className="text-gray-500">{opening.drawsPercentage}%</span>
-                    <span className="text-red-600">{opening.lossesPercentage}%</span>
-                  </div>
-                </TableCell>
+                <TableCell className="text-green-600 font-medium">{opening.winsPercentage}%</TableCell>
+                <TableCell className="text-gray-600">{opening.drawsPercentage}%</TableCell>
+                <TableCell className="text-red-600 font-medium">{opening.lossesPercentage}%</TableCell>
                 <TableCell>
                   <Popover>
                     <PopoverTrigger asChild>

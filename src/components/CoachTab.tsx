@@ -66,6 +66,18 @@ const CoachTab: React.FC<{ analysis: UserAnalysis }> = ({ analysis }) => {
   const drawRate = totalGames > 0 ? Math.round((totalDraws / totalGames) * 100) : 0;
   const lossRate = totalGames > 0 ? Math.round((totalLosses / totalGames) * 100) : 0;
   
+  // Find strongest openings for insights
+  const getMostSignificantOpening = (color: 'white' | 'black') => {
+    const openings = color === 'white' 
+      ? analysis.openings.all.meaningfulWhite || []
+      : analysis.openings.all.meaningfulBlack || [];
+    
+    return openings.length > 0 ? openings[0] : null;
+  };
+  
+  const topWhiteOpening = getMostSignificantOpening('white');
+  const topBlackOpening = getMostSignificantOpening('black');
+  
   // Determine time-of-day performance insights
   let timeInsight = "";
   if (bestTimeSlot.slot === '16:00-19:59' && worstTimeSlot.slot === '12:00-15:59') {
@@ -179,11 +191,15 @@ const CoachTab: React.FC<{ analysis: UserAnalysis }> = ({ analysis }) => {
                       <div>
                         <h2 className="text-xl font-bold mb-2">Coach Analysis</h2>
                         <p className="text-gray-700 leading-relaxed">
-                          Over the past 90 days, your gameplay demonstrates a solid foundation with a promising win rate of {winRate}%. 
-                          Your strengths lie notably in your opening knowledge, particularly with the Sicilian Defense and the Queen's Gambit Declined, 
-                          where you manage to gain early positional advantages. You exhibit strong tactical alertness, frequently leveraging forks and pins effectively, 
-                          and you demonstrate strategic patience in the middlegame by maintaining control over key central squares and executing well-timed pawn breaks. 
-                          Your transition into the endgame is generally good, often capitalizing on minor material advantages through precise calculation and king activity.
+                          Based on your last {totalGames} games, your {winRate}% win rate shows {winRate > 55 ? "strong" : winRate > 45 ? "solid" : "developing"} skills. 
+                          {topWhiteOpening ? ` As White, the ${topWhiteOpening.name} is your strongest opening with a ${topWhiteOpening.winsPercentage}% win rate.` : ""} 
+                          {topBlackOpening ? ` Playing Black, you achieve your best results with the ${topBlackOpening.name} (${topBlackOpening.winsPercentage}% wins).` : ""} 
+                          Your {phaseData.sort((a, b) => b.value - a.value)[0].name.toLowerCase()} phase is your strongest, while your endgame conversion rate 
+                          of {analysis.conversionRate}% when ahead in material {analysis.conversionRate! > 70 ? "is excellent" : analysis.conversionRate! > 60 ? "is solid" : "needs improvement"}.
+                          {bestTimeSlot ? ` Performance peaks during ${bestTimeSlot.slot} (${bestTimeSlot.winRate}% win rate).` : ""} 
+                          {bestDay ? ` ${bestDay.day}s are your best day (${bestDay.winRate}% win rate).` : ""} 
+                          With focused study on your {phaseData.sort((a, b) => a.value - b.value)[0].name.toLowerCase()} phase and addressing time management, 
+                          you could quickly gain 50-100 rating points.
                         </p>
                       </div>
                     </div>
@@ -200,6 +216,16 @@ const CoachTab: React.FC<{ analysis: UserAnalysis }> = ({ analysis }) => {
                         {analysis.strengths.map((strength, i) => (
                           <li key={i} className="text-gray-700">{strength}</li>
                         ))}
+                        {topWhiteOpening && (
+                          <li className="text-gray-700">
+                            Strong results with {topWhiteOpening.name} as White ({topWhiteOpening.winsPercentage}% win rate)
+                          </li>
+                        )}
+                        {topBlackOpening && (
+                          <li className="text-gray-700">
+                            Effective use of {topBlackOpening.name} as Black ({topBlackOpening.winsPercentage}% win rate)
+                          </li>
+                        )}
                       </ul>
                     </div>
                     
@@ -213,6 +239,14 @@ const CoachTab: React.FC<{ analysis: UserAnalysis }> = ({ analysis }) => {
                         {analysis.weaknesses.map((weakness, i) => (
                           <li key={i} className="text-gray-700">{weakness}</li>
                         ))}
+                        <li className="text-gray-700">
+                          {phaseData.sort((a, b) => a.value - b.value)[0].name} accuracy ({phaseData.sort((a, b) => a.value - b.value)[0].value}%) needs improvement
+                        </li>
+                        {analysis.conversionRate && analysis.conversionRate < 70 && (
+                          <li className="text-gray-700">
+                            Material advantage conversion rate ({analysis.conversionRate}%) could be higher
+                          </li>
+                        )}
                       </ul>
                     </div>
                     
@@ -226,6 +260,21 @@ const CoachTab: React.FC<{ analysis: UserAnalysis }> = ({ analysis }) => {
                         {analysis.recommendations.map((rec, i) => (
                           <li key={i} className="text-gray-700">{rec}</li>
                         ))}
+                        {phaseData.sort((a, b) => a.value - b.value)[0].name === 'Opening' && (
+                          <li className="text-gray-700">
+                            Study the first 10-15 moves of your main openings to improve your opening preparation
+                          </li>
+                        )}
+                        {phaseData.sort((a, b) => a.value - b.value)[0].name === 'Middlegame' && (
+                          <li className="text-gray-700">
+                            Practice positional play and planning in complex middlegame positions
+                          </li>
+                        )}
+                        {phaseData.sort((a, b) => a.value - b.value)[0].name === 'Endgame' && (
+                          <li className="text-gray-700">
+                            Master basic endgame principles and practice common endgame patterns
+                          </li>
+                        )}
                       </ul>
                     </div>
                   </div>
@@ -313,10 +362,10 @@ const CoachTab: React.FC<{ analysis: UserAnalysis }> = ({ analysis }) => {
               </div>
               <p className="text-gray-700 italic mt-4">
                 {phaseData[0].value > phaseData[1].value && phaseData[0].value > phaseData[2].value ? 
-                  "Strong openings but middlegame phase is a key area for targeted improvement." :
+                  `Your opening knowledge is strong but middlegame transition could be improved. Consider studying typical pawn structures arising from ${topWhiteOpening?.name || "your main openings"}.` :
                 phaseData[2].value > phaseData[0].value && phaseData[2].value > phaseData[1].value ?
-                  "Your endgame technique is exceptional - focus on translating your opening positions into endgame advantages." :
-                  "Your middlegame understanding is your strength - consider studying opening theory to reach favorable middlegames more often."
+                  `Your endgame technique is excellent - focus on reaching favorable endgames from your ${topWhiteOpening?.name || "main openings"} more consistently.` :
+                  `Your middlegame understanding is your strength - consider studying opening theory to reach favorable middlegames more often, especially in the ${topWhiteOpening?.name || "lines you frequently play"}.`
                 }
               </p>
             </div>
@@ -417,10 +466,10 @@ const CoachTab: React.FC<{ analysis: UserAnalysis }> = ({ analysis }) => {
                       'text-amber-600'
                     }`}>
                       {(analysis.conversionRate || 0) > 75 ? 
-                        "Excellent conversion - you consistently capitalize on advantages" : 
+                        `Excellent conversion - you consistently capitalize on advantages, especially in the ${topWhiteOpening?.name || "openings you play"}` : 
                         (analysis.conversionRate || 0) < 65 ? 
-                        "Consider studying endgame techniques to improve your conversion rate" :
-                        "Decent conversion rate with room for improvement"
+                        "Consider studying endgame techniques focused on converting material advantages into wins" :
+                        "Decent conversion rate with room for improvement - practice converting winning positions in similar pawn structures"
                       }
                     </p>
                   </div>

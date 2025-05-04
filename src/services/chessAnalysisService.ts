@@ -1,4 +1,3 @@
-
 import { OpeningData, OpeningsTableData, DayPerformance, TimeSlotPerformance, PhaseAccuracy, MoveQuality, UserAnalysis, Rating, ChessVariant } from '@/utils/types';
 import { toast } from '@/hooks/use-toast';
 import { UserInfo, TimeRange, Platform } from '@/utils/types';
@@ -32,6 +31,85 @@ export const pgnToFen = (moves: string): string => {
   }
 };
 
+// Map of opening moves to names
+const openingNames: Record<string, string> = {
+  // White openings
+  "e4": "King's Pawn Opening",
+  "d4": "Queen's Pawn Opening",
+  "c4": "English Opening",
+  "Nf3": "Réti Opening",
+  "f4": "Bird's Opening",
+  "b3": "Larsen's Opening",
+  "g3": "King's Fianchetto Opening",
+  "b4": "Sokolsky Opening",
+  "a3": "Anderssen's Opening",
+  "Nc3": "Van Geet Opening",
+  
+  // Black responses to e4
+  "e4 e5": "Open Game",
+  "e4 e6": "French Defense",
+  "e4 c5": "Sicilian Defense",
+  "e4 c6": "Caro-Kann Defense",
+  "e4 d5": "Scandinavian Defense",
+  "e4 d6": "Pirc Defense",
+  "e4 g6": "Modern Defense",
+  "e4 Nf6": "Alekhine's Defense",
+  
+  // Black responses to d4
+  "d4 d5": "Closed Game",
+  "d4 Nf6": "Indian Defense",
+  "d4 f5": "Dutch Defense",
+  "d4 c5": "Benoni Defense",
+  "d4 e6": "French Defense Structure",
+  
+  // Deeper openings - e4
+  "e4 e5 Nf3": "King's Knight Opening",
+  "e4 e5 Nf3 Nc6": "Two Knights Defense",
+  "e4 e5 Nf3 Nf6": "Petrov's Defense",
+  "e4 e5 Bc4": "Bishop's Opening",
+  "e4 e5 f4": "King's Gambit",
+  "e4 c5 Nf3": "Open Sicilian",
+  "e4 c5 Nf3 d6": "Sicilian Najdorf Variation",
+  "e4 c5 Nf3 e6": "Sicilian Scheveningen",
+  "e4 c5 c3": "Sicilian Alapin",
+  "e4 c5 b4": "Sicilian Wing Gambit",
+  "e4 e6 d4": "French Defense",
+  "e4 e6 d4 d5": "French Defense Main Line",
+  "e4 d5 exd5": "Scandinavian Defense",
+  "e4 c6 d4": "Caro-Kann Defense",
+  "e4 c6 d4 d5": "Caro-Kann Main Line",
+  
+  // Deeper openings - d4
+  "d4 d5 c4": "Queen's Gambit",
+  "d4 d5 c4 e6": "Queen's Gambit Declined",
+  "d4 d5 c4 c6": "Slav Defense",
+  "d4 d5 c4 dxc4": "Queen's Gambit Accepted",
+  "d4 Nf6 c4": "Indian Defense",
+  "d4 Nf6 c4 e6": "Queen's Indian Defense",
+  "d4 Nf6 c4 g6": "King's Indian Defense",
+  "d4 Nf6 c4 c5": "Benoni Defense",
+  "d4 Nf6 Bf4": "London System",
+};
+
+// Get opening name based on sequence
+const getOpeningName = (sequence: string): string => {
+  // Clean the sequence to simplify matching
+  const cleanSequence = sequence.replace(/\d+\.\s/g, '').trim();
+  
+  // Try to find the longest matching sequence
+  let bestMatch = '';
+  
+  // Check exact matches
+  for (const key in openingNames) {
+    if (cleanSequence.startsWith(key) && key.length > bestMatch.length) {
+      bestMatch = key;
+    }
+  }
+  
+  // Return the match or a generic name
+  return bestMatch ? openingNames[bestMatch] : "Unknown Opening";
+};
+
 // Extract opening sequences from games
 const extractOpeningSequences = (games: any[]): Record<string, any> => {
   const openingSequences: Record<string, any> = {
@@ -43,8 +121,12 @@ const extractOpeningSequences = (games: any[]): Record<string, any> => {
     black4: {},
     white5: {},
     black5: {},
+    white6: {},
+    black6: {},
     white7: {},
     black7: {},
+    white8: {},
+    black8: {},
     white10: {},
     black10: {},
   };
@@ -100,19 +182,13 @@ const extractOpeningSequences = (games: any[]): Record<string, any> => {
     const movePairs = moves.split(/\d+\./).filter(Boolean);
     
     // Extract sequences of different depths
-    [2, 3, 4, 5, 7, 10].forEach(depth => {
+    [2, 3, 4, 5, 6, 7, 8, 10].forEach(depth => {
       if (movePairs.length >= depth) {
         const sequenceMovePairs = movePairs.slice(0, depth).join(' ').trim();
         const sequenceKey = `${playerColor}${depth}`;
         
-        let openingName = 'Unknown Opening';
-        
-        // Try to get opening name
-        if (game.opening && game.opening.name) {
-          openingName = game.opening.name;
-        } else if (game.opening && typeof game.opening === 'string') {
-          openingName = game.opening;
-        }
+        // Get opening name
+        const openingName = getOpeningName(sequenceMovePairs);
         
         if (!openingSequences[sequenceKey][sequenceMovePairs]) {
           openingSequences[sequenceKey][sequenceMovePairs] = {
@@ -144,6 +220,7 @@ const extractOpeningSequences = (games: any[]): Record<string, any> => {
 const findMeaningfulOpenings = (sequences: Record<string, any>, totalWhiteGames: number, totalBlackGames: number): {
   meaningfulWhite: OpeningData[];
   meaningfulBlack: OpeningData[];
+  meaningfulCombined: OpeningData[];
 } => {
   // Define typed openingSeq type to avoid 'unknown' errors
   interface OpeningSeq {
@@ -155,64 +232,140 @@ const findMeaningfulOpenings = (sequences: Record<string, any>, totalWhiteGames:
     losses: number;
   }
 
-  // Combine all white sequences
-  const whiteSequences = [
-    ...Object.values(sequences.white2) as OpeningSeq[], 
-    ...Object.values(sequences.white3) as OpeningSeq[],
-    ...Object.values(sequences.white4) as OpeningSeq[], 
-    ...Object.values(sequences.white5) as OpeningSeq[],
-    ...Object.values(sequences.white7) as OpeningSeq[], 
-    ...Object.values(sequences.white10) as OpeningSeq[]
-  ];
-  
-  // Combine all black sequences
-  const blackSequences = [
-    ...Object.values(sequences.black2) as OpeningSeq[], 
-    ...Object.values(sequences.black3) as OpeningSeq[],
-    ...Object.values(sequences.black4) as OpeningSeq[], 
-    ...Object.values(sequences.black5) as OpeningSeq[],
-    ...Object.values(sequences.black7) as OpeningSeq[], 
-    ...Object.values(sequences.black10) as OpeningSeq[]
-  ];
-  
-  // Filter sequences with at least 25 games
-  const candidateWhite = whiteSequences.filter(seq => seq.games >= 25);
-  const candidateBlack = blackSequences.filter(seq => seq.games >= 25);
-  
-  // Calculate score and sort - for now using a simplified formula
-  const calculateScore = (seq: OpeningSeq) => {
-    const winRate = seq.wins / seq.games;
-    return seq.games * (Math.abs(winRate - 0.5) + 0.2);
+  // Function to collect sequences across all depths
+  const collectSequencesByColor = (color: 'white' | 'black') => {
+    const allSequences: Record<string, OpeningSeq> = {};
+    
+    // Collect sequences from all depths
+    for (const depth of [2, 3, 4, 5, 6, 7, 8, 10]) {
+      const key = `${color}${depth}`;
+      if (!sequences[key]) continue;
+      
+      for (const [seq, data] of Object.entries(sequences[key])) {
+        // Only consider sequences with enough games
+        if (data.games >= 5) {
+          allSequences[seq] = data as OpeningSeq;
+        }
+      }
+    }
+    
+    return allSequences;
   };
   
-  // Sort by score and take top 10
-  const meaningfulWhite = candidateWhite
-    .map(seq => ({
-      ...seq,
-      score: calculateScore(seq),
-      gamesPercentage: parseFloat((seq.games / totalWhiteGames * 100).toFixed(1)),
-      winsPercentage: parseFloat((seq.wins / seq.games * 100).toFixed(1)),
-      drawsPercentage: parseFloat((seq.draws / seq.games * 100).toFixed(1)),
-      lossesPercentage: parseFloat((seq.losses / seq.games * 100).toFixed(1)),
-      fen: pgnToFen(seq.sequence)
-    }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 10);
+  // Collect all valid sequences
+  const whiteSequences = collectSequencesByColor('white');
+  const blackSequences = collectSequencesByColor('black');
   
-  const meaningfulBlack = candidateBlack
-    .map(seq => ({
-      ...seq,
-      score: calculateScore(seq),
-      gamesPercentage: parseFloat((seq.games / totalBlackGames * 100).toFixed(1)),
-      winsPercentage: parseFloat((seq.wins / seq.games * 100).toFixed(1)),
-      drawsPercentage: parseFloat((seq.draws / seq.games * 100).toFixed(1)),
-      lossesPercentage: parseFloat((seq.losses / seq.games * 100).toFixed(1)),
-      fen: pgnToFen(seq.sequence)
-    }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 10);
+  // Sort sequences by depth (descending), then by games (descending)
+  const sortedWhiteKeys = Object.keys(whiteSequences)
+    .sort((a, b) => {
+      const depthA = a.split(' ').length;
+      const depthB = b.split(' ').length;
+      if (depthA !== depthB) return depthB - depthA;
+      return whiteSequences[b].games - whiteSequences[a].games;
+    });
   
-  return { meaningfulWhite, meaningfulBlack };
+  const sortedBlackKeys = Object.keys(blackSequences)
+    .sort((a, b) => {
+      const depthA = a.split(' ').length;
+      const depthB = b.split(' ').length;
+      if (depthA !== depthB) return depthB - depthA;
+      return blackSequences[b].games - blackSequences[a].games;
+    });
+  
+  // Prune redundant prefixes
+  const finalWhiteSequences: OpeningSeq[] = [];
+  const finalBlackSequences: OpeningSeq[] = [];
+  const usedWhitePrefixes = new Set<string>();
+  const usedBlackPrefixes = new Set<string>();
+  
+  // Process white sequences
+  for (const seq of sortedWhiteKeys) {
+    // Skip if this sequence is a prefix of an already chosen sequence
+    let isPrefix = false;
+    for (const prefix of usedWhitePrefixes) {
+      if (seq.startsWith(prefix)) {
+        isPrefix = true;
+        break;
+      }
+    }
+    
+    if (!isPrefix) {
+      finalWhiteSequences.push(whiteSequences[seq]);
+      usedWhitePrefixes.add(seq);
+      
+      // Stop if we have enough sequences
+      if (finalWhiteSequences.length >= 20) break;
+    }
+  }
+  
+  // Process black sequences
+  for (const seq of sortedBlackKeys) {
+    // Skip if this sequence is a prefix of an already chosen sequence
+    let isPrefix = false;
+    for (const prefix of usedBlackPrefixes) {
+      if (seq.startsWith(prefix)) {
+        isPrefix = true;
+        break;
+      }
+    }
+    
+    if (!isPrefix) {
+      finalBlackSequences.push(blackSequences[seq]);
+      usedBlackPrefixes.add(seq);
+      
+      // Stop if we have enough sequences
+      if (finalBlackSequences.length >= 20) break;
+    }
+  }
+  
+  // Calculate percentages and impact scores
+  const processSequences = (seqs: OpeningSeq[], totalGames: number, color: 'white' | 'black'): OpeningData[] => {
+    return seqs.map(seq => {
+      const gamesPercentage = parseFloat((seq.games / totalGames * 100).toFixed(1));
+      const winsPercentage = parseFloat((seq.wins / seq.games * 100).toFixed(1));
+      const drawsPercentage = parseFloat((seq.draws / seq.games * 100).toFixed(1));
+      const lossesPercentage = parseFloat((seq.losses / seq.games * 100).toFixed(1));
+      
+      // Calculate impact score (games × max(win%, loss%))
+      const impactScore = seq.games * Math.max(winsPercentage, lossesPercentage) / 100;
+      
+      return {
+        name: seq.name,
+        sequence: seq.sequence,
+        games: seq.games,
+        gamesPercentage,
+        wins: seq.wins,
+        winsPercentage,
+        draws: seq.draws,
+        drawsPercentage,
+        losses: seq.losses,
+        lossesPercentage,
+        fen: pgnToFen(seq.sequence),
+        score: impactScore,
+        color
+      };
+    });
+  };
+  
+  const meaningfulWhite = processSequences(finalWhiteSequences, totalWhiteGames, 'white')
+    .sort((a, b) => b.score! - a.score!)
+    .slice(0, 20);
+  
+  const meaningfulBlack = processSequences(finalBlackSequences, totalBlackGames, 'black')
+    .sort((a, b) => b.score! - a.score!)
+    .slice(0, 20);
+  
+  // Create combined list with impact rankings
+  const meaningfulCombined = [...meaningfulWhite, ...meaningfulBlack]
+    .sort((a, b) => b.score! - a.score!)
+    .slice(0, 20)
+    .map((opening, index) => ({
+      ...opening,
+      impact: index + 1
+    }));
+  
+  return { meaningfulWhite, meaningfulBlack, meaningfulCombined };
 };
 
 // Format opening data for display
@@ -228,6 +381,8 @@ const formatOpeningData = (sequences: Record<string, any>, depth: number, color:
   }
 
   const key = `${color}${depth}`;
+  
+  if (!sequences[key]) return [];
   
   return Object.values(sequences[key])
     .map((opening: OpeningSeq) => ({
@@ -374,21 +529,33 @@ const extractInsights = (data: any): string[] => {
     insights.push(`Your strongest day is ${bestDay.day} (${bestDay.winRate}% win rate), while your most challenging is ${worstDay.day} (${worstDay.winRate}% win rate).`);
   }
   
-  // Opening insights
-  const whiteMoves = data.openings.white3;
-  const blackMoves = data.openings.black3;
-  
-  if (whiteMoves.length > 0) {
-    const bestWhiteOpening = whiteMoves.sort((a, b) => b.winsPercentage - a.winsPercentage)[0];
-    if (bestWhiteOpening.games > 10) {
-      insights.push(`Your strongest opening with White is the ${bestWhiteOpening.name} with a ${bestWhiteOpening.winsPercentage}% win rate over ${bestWhiteOpening.games} games.`);
+  // Opening insights - more detailed
+  if (data.openings) {
+    // Find best white opening
+    if (data.openings.meaningfulWhite && data.openings.meaningfulWhite.length > 0) {
+      const bestWhiteOpening = data.openings.meaningfulWhite[0];
+      if (bestWhiteOpening.games > 10) {
+        insights.push(`Your strongest White opening is the ${bestWhiteOpening.name} with a ${bestWhiteOpening.winsPercentage}% win rate over ${bestWhiteOpening.games} games. You might want to research more theory on this opening to further improve your results.`);
+      }
     }
-  }
-  
-  if (blackMoves.length > 0) {
-    const bestBlackOpening = blackMoves.sort((a, b) => b.winsPercentage - a.winsPercentage)[0];
-    if (bestBlackOpening.games > 10) {
-      insights.push(`Your strongest response as Black is the ${bestBlackOpening.name} with a ${bestBlackOpening.winsPercentage}% win rate over ${bestBlackOpening.games} games.`);
+    
+    // Find best black opening
+    if (data.openings.meaningfulBlack && data.openings.meaningfulBlack.length > 0) {
+      const bestBlackOpening = data.openings.meaningfulBlack[0];
+      if (bestBlackOpening.games > 10) {
+        insights.push(`Your strongest response as Black is the ${bestBlackOpening.name} with a ${bestBlackOpening.winsPercentage}% win rate over ${bestBlackOpening.games} games. Consider focusing your study on this opening to capitalize on your strengths.`);
+      }
+    }
+    
+    // Find problematic opening
+    if (data.openings.meaningfulWhite && data.openings.meaningfulWhite.length > 0) {
+      const problematicWhite = [...data.openings.meaningfulWhite]
+        .filter(o => o.games > 15)
+        .sort((a, b) => a.winsPercentage - b.winsPercentage)[0];
+      
+      if (problematicWhite && problematicWhite.winsPercentage < 40) {
+        insights.push(`Your results with the ${problematicWhite.name} as White are concerning (${problematicWhite.winsPercentage}% win rate over ${problematicWhite.games} games). Consider studying this opening more deeply or switching to an alternative.`);
+      }
     }
   }
   
@@ -432,45 +599,18 @@ export const analyzeChessData = async (data: {
     
     console.log(`Found ${games.length} games for analysis`);
     
-    // Extract ratings - initially set as empty
-    let ratings: Rating = {};
-    
-    // Try to extract ratings from the games
-    if (games.length > 0) {
-      const recentGame = games[0];
-      
-      if (info.platform === 'chess.com') {
-        // For Chess.com, try to determine from game time control
-        if (recentGame.time_control) {
-          const timeControl = recentGame.time_control.toLowerCase();
-          if (timeControl.includes('bullet')) {
-            ratings.bullet = parseInt(recentGame.white.rating);
-          } else if (timeControl.includes('blitz')) {
-            ratings.blitz = parseInt(recentGame.white.rating);
-          } else if (timeControl.includes('rapid')) {
-            ratings.rapid = parseInt(recentGame.white.rating);
-          }
-        }
-      } else {
-        // For Lichess, try to get from the players object
-        if (recentGame.players && recentGame.players.white && recentGame.players.white.rating) {
-          const variant = recentGame.speed || 'blitz';
-          if (variant === 'bullet') {
-            ratings.bullet = recentGame.players.white.rating;
-          } else if (variant === 'blitz') {
-            ratings.blitz = recentGame.players.white.rating;
-          } else if (variant === 'rapid') {
-            ratings.rapid = recentGame.players.white.rating;
-          }
-        }
-      }
-    }
+    // Extract ratings more thoroughly
+    const ratings = extractRatings(games, info.platform);
     
     // Extract opening data
     const { sequences, totalWhiteGames, totalBlackGames } = extractOpeningSequences(games);
     
     // Find meaningful openings
-    const { meaningfulWhite, meaningfulBlack } = findMeaningfulOpenings(sequences, totalWhiteGames, totalBlackGames);
+    const { meaningfulWhite, meaningfulBlack, meaningfulCombined } = findMeaningfulOpenings(
+      sequences, 
+      totalWhiteGames, 
+      totalBlackGames
+    );
     
     // Format openings data for all variants
     const allOpeningsData: Record<ChessVariant, OpeningsTableData> = {
@@ -483,44 +623,75 @@ export const analyzeChessData = async (data: {
         black4: formatOpeningData(sequences, 4, 'black', totalBlackGames),
         white5: formatOpeningData(sequences, 5, 'white', totalWhiteGames),
         black5: formatOpeningData(sequences, 5, 'black', totalBlackGames),
+        white6: formatOpeningData(sequences, 6, 'white', totalWhiteGames),
+        black6: formatOpeningData(sequences, 6, 'black', totalBlackGames),
         white7: formatOpeningData(sequences, 7, 'white', totalWhiteGames),
         black7: formatOpeningData(sequences, 7, 'black', totalBlackGames),
+        white8: formatOpeningData(sequences, 8, 'white', totalWhiteGames),
+        black8: formatOpeningData(sequences, 8, 'black', totalBlackGames),
+        white10: formatOpeningData(sequences, 10, 'white', totalWhiteGames),
+        black10: formatOpeningData(sequences, 10, 'black', totalBlackGames),
         totalWhiteGames,
         totalBlackGames,
         meaningfulWhite,
-        meaningfulBlack
+        meaningfulBlack,
+        meaningfulCombined
       },
       blitz: {
+        white2: [],
+        black2: [],
         white3: [],
         black3: [],
+        white4: [],
+        black4: [],
         white5: [],
         black5: [],
+        white6: [],
+        black6: [],
         white7: [],
         black7: [],
+        white8: [],
+        black8: [],
         totalWhiteGames: 0,
         totalBlackGames: 0,
         meaningfulWhite: [],
         meaningfulBlack: []
       },
       rapid: {
+        white2: [],
+        black2: [],
         white3: [],
         black3: [],
+        white4: [],
+        black4: [],
         white5: [],
         black5: [],
+        white6: [],
+        black6: [],
         white7: [],
         black7: [],
+        white8: [],
+        black8: [],
         totalWhiteGames: 0,
         totalBlackGames: 0,
         meaningfulWhite: [],
         meaningfulBlack: []
       },
       bullet: {
+        white2: [],
+        black2: [],
         white3: [],
         black3: [],
+        white4: [],
+        black4: [],
         white5: [],
         black5: [],
+        white6: [],
+        black6: [],
         white7: [],
         black7: [],
+        white8: [],
+        black8: [],
         totalWhiteGames: 0,
         totalBlackGames: 0,
         meaningfulWhite: [],
@@ -560,36 +731,37 @@ export const analyzeChessData = async (data: {
     for (const variant of ['blitz', 'rapid', 'bullet'] as const) {
       if (variantGames[variant].length > 0) {
         const variantData = extractOpeningSequences(variantGames[variant]);
-        const { meaningfulWhite: variantMeaningfulWhite, meaningfulBlack: variantMeaningfulBlack } = 
+        const { meaningfulWhite: variantMeaningfulWhite, meaningfulBlack: variantMeaningfulBlack, meaningfulCombined: variantMeaningfulCombined } = 
           findMeaningfulOpenings(variantData.sequences, variantData.totalWhiteGames, variantData.totalBlackGames);
         
         allOpeningsData[variant] = {
+          white2: formatOpeningData(variantData.sequences, 2, 'white', variantData.totalWhiteGames),
+          black2: formatOpeningData(variantData.sequences, 2, 'black', variantData.totalBlackGames),
           white3: formatOpeningData(variantData.sequences, 3, 'white', variantData.totalWhiteGames),
           black3: formatOpeningData(variantData.sequences, 3, 'black', variantData.totalBlackGames),
+          white4: formatOpeningData(variantData.sequences, 4, 'white', variantData.totalWhiteGames),
+          black4: formatOpeningData(variantData.sequences, 4, 'black', variantData.totalBlackGames),
           white5: formatOpeningData(variantData.sequences, 5, 'white', variantData.totalWhiteGames),
           black5: formatOpeningData(variantData.sequences, 5, 'black', variantData.totalBlackGames),
+          white6: formatOpeningData(variantData.sequences, 6, 'white', variantData.totalWhiteGames),
+          black6: formatOpeningData(variantData.sequences, 6, 'black', variantData.totalBlackGames),
           white7: formatOpeningData(variantData.sequences, 7, 'white', variantData.totalWhiteGames),
           black7: formatOpeningData(variantData.sequences, 7, 'black', variantData.totalBlackGames),
+          white8: formatOpeningData(variantData.sequences, 8, 'white', variantData.totalWhiteGames),
+          black8: formatOpeningData(variantData.sequences, 8, 'black', variantData.totalBlackGames),
+          white10: formatOpeningData(variantData.sequences, 10, 'white', variantData.totalWhiteGames),
+          black10: formatOpeningData(variantData.sequences, 10, 'black', variantData.totalBlackGames),
           totalWhiteGames: variantData.totalWhiteGames,
           totalBlackGames: variantData.totalBlackGames,
           meaningfulWhite: variantMeaningfulWhite,
-          meaningfulBlack: variantMeaningfulBlack
+          meaningfulBlack: variantMeaningfulBlack,
+          meaningfulCombined: variantMeaningfulCombined
         };
       }
     }
     
     // Generate time analysis
     const { dayPerformance, timePerformance } = generateTimeAnalysis(games);
-    
-    // Find best and worst time slots
-    const sortedTimeSlots = [...timePerformance].sort((a, b) => b.winRate - a.winRate);
-    const bestTimeSlot = sortedTimeSlots.length > 0 ? sortedTimeSlots[0] : null;
-    const worstTimeSlot = sortedTimeSlots.length > 0 ? sortedTimeSlots[sortedTimeSlots.length - 1] : null;
-    
-    // Find best and worst days
-    const sortedDays = [...dayPerformance].sort((a, b) => b.winRate - a.winRate);
-    const bestDay = sortedDays.length > 0 ? sortedDays[0] : null;
-    const worstDay = sortedDays.length > 0 ? sortedDays[sortedDays.length - 1] : null;
     
     // Create phase accuracy data (in a real app, this would come from actual game analysis)
     const phaseAccuracy: PhaseAccuracy = {
@@ -641,11 +813,25 @@ export const analyzeChessData = async (data: {
       worstDay ? `Consider taking a break from competitive play on ${worstDay.day}` : "Maintain a consistent playing schedule throughout the week"
     ];
     
+    // Add meaningful opening recommendations
+    if (meaningfulWhite.length > 0) {
+      const topWhiteOpening = meaningfulWhite[0];
+      recommendations.push(`Continue developing your ${topWhiteOpening.name} repertoire as White, which currently shows a ${topWhiteOpening.winsPercentage}% win rate.`);
+    }
+    
+    if (meaningfulBlack.length > 0) {
+      const topBlackOpening = meaningfulBlack[0];
+      recommendations.push(`Study more deeply the ${topBlackOpening.name} as Black, focusing on common middlegame plans and endgame patterns.`);
+    }
+    
     // Add insights to the openings data for all variants
     const insights = extractInsights({
       timePerformance,
       dayPerformance,
-      openings: allOpeningsData.all,
+      openings: {
+        meaningfulWhite,
+        meaningfulBlack
+      },
       phaseAccuracy,
       weaknesses
     });
@@ -735,25 +921,32 @@ export const extractRatings = (games: any[], platform: Platform): Rating => {
       // Extract most recent rating for each variant
       if (variantGames.bullet.length > 0) {
         const game = variantGames.bullet[0];
-        if (game.white && game.white.rating) {
+        // Try to get the player's rating, checking both white and black
+        if (game.white && game.white.rating && game.white.username) {
           ratings.bullet = parseInt(game.white.rating);
+        } else if (game.black && game.black.rating && game.black.username) {
+          ratings.bullet = parseInt(game.black.rating);
         }
       }
       
       if (variantGames.blitz.length > 0) {
         const game = variantGames.blitz[0];
-        if (game.white && game.white.rating) {
+        if (game.white && game.white.rating && game.white.username) {
           ratings.blitz = parseInt(game.white.rating);
+        } else if (game.black && game.black.rating && game.black.username) {
+          ratings.blitz = parseInt(game.black.rating);
         }
       }
       
       if (variantGames.rapid.length > 0) {
         const game = variantGames.rapid[0];
-        if (game.white && game.white.rating) {
+        if (game.white && game.white.rating && game.white.username) {
           ratings.rapid = parseInt(game.white.rating);
+        } else if (game.black && game.black.rating && game.black.username) {
+          ratings.rapid = parseInt(game.black.rating);
         }
       }
-    } else {
+    } else if (platform === 'lichess') {
       // For lichess, extract from players object
       games.forEach(game => {
         const variant = game.speed || 'blitz';
@@ -771,6 +964,8 @@ export const extractRatings = (games: any[], platform: Platform): Rating => {
         const game = variantGames.bullet[0];
         if (game.players && game.players.white && game.players.white.rating) {
           ratings.bullet = game.players.white.rating;
+        } else if (game.players && game.players.black && game.players.black.rating) {
+          ratings.bullet = game.players.black.rating;
         }
       }
       
@@ -778,6 +973,8 @@ export const extractRatings = (games: any[], platform: Platform): Rating => {
         const game = variantGames.blitz[0];
         if (game.players && game.players.white && game.players.white.rating) {
           ratings.blitz = game.players.white.rating;
+        } else if (game.players && game.players.black && game.players.black.rating) {
+          ratings.blitz = game.players.black.rating;
         }
       }
       
@@ -785,8 +982,18 @@ export const extractRatings = (games: any[], platform: Platform): Rating => {
         const game = variantGames.rapid[0];
         if (game.players && game.players.white && game.players.white.rating) {
           ratings.rapid = game.players.white.rating;
+        } else if (game.players && game.players.black && game.players.black.rating) {
+          ratings.rapid = game.players.black.rating;
         }
       }
+    }
+    
+    // Placeholder for uploaded games
+    else {
+      // For uploaded games, use some dummy ratings if not available otherwise
+      if (!ratings.blitz) ratings.blitz = 1500 + Math.floor(Math.random() * 500);
+      if (!ratings.rapid) ratings.rapid = 1500 + Math.floor(Math.random() * 500);
+      if (!ratings.bullet) ratings.bullet = 1500 + Math.floor(Math.random() * 500);
     }
   }
   
