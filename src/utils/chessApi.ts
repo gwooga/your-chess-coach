@@ -1,4 +1,3 @@
-
 import { Platform, TimeRange, UserAnalysis, ChessVariant, UserInfo, Rating, OpeningsTableData, DayPerformance, TimeSlotPerformance } from './types';
 import { toast } from '@/hooks/use-toast';
 
@@ -278,12 +277,20 @@ const fetchUserAnalysis = async (userInfo: UserInfo, timeRange: TimeRange): Prom
         const variantUsername = username + variant; // Create variant-specific username seed
         const multiplier = variant === 'all' ? 1 : 0.5;
         return {
+          white2: generateOpeningData(variantUsername, Math.floor(totalGamesWhite * multiplier), 'white', 3),
+          black2: generateOpeningData(variantUsername, Math.floor(totalGamesBlack * multiplier), 'black', 3),
           white3: generateOpeningData(variantUsername, Math.floor(totalGamesWhite * multiplier), 'white', 3),
           black3: generateOpeningData(variantUsername, Math.floor(totalGamesBlack * multiplier), 'black', 3),
+          white4: generateOpeningData(variantUsername, Math.floor(totalGamesWhite * multiplier), 'white', 3),
+          black4: generateOpeningData(variantUsername, Math.floor(totalGamesBlack * multiplier), 'black', 3),
           white5: generateOpeningData(variantUsername, Math.floor(totalGamesWhite * multiplier), 'white', 5),
           black5: generateOpeningData(variantUsername, Math.floor(totalGamesBlack * multiplier), 'black', 5),
+          white6: generateOpeningData(variantUsername, Math.floor(totalGamesWhite * multiplier), 'white', 5),
+          black6: generateOpeningData(variantUsername, Math.floor(totalGamesBlack * multiplier), 'black', 5),
           white7: generateOpeningData(variantUsername, Math.floor(totalGamesWhite * multiplier), 'white', 7),
           black7: generateOpeningData(variantUsername, Math.floor(totalGamesBlack * multiplier), 'black', 7),
+          white8: generateOpeningData(variantUsername, Math.floor(totalGamesWhite * multiplier), 'white', 7),
+          black8: generateOpeningData(variantUsername, Math.floor(totalGamesBlack * multiplier), 'black', 7),
           totalWhiteGames: Math.floor(totalGamesWhite * multiplier),
           totalBlackGames: Math.floor(totalGamesBlack * multiplier)
         };
