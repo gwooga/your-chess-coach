@@ -12,11 +12,27 @@ const Index: React.FC = () => {
   });
   const [timeRange, setTimeRange] = useState<TimeRange>('last90');
   const [showAnalyzer, setShowAnalyzer] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
+  // Updated to match UserForm's onSubmit prop type
   const handleFormSubmit = (games: any[], info: UserInfo, timeRange: TimeRange) => {
     setGames(games);
     setUserInfo(info);
     setTimeRange(timeRange);
+    setShowAnalyzer(true);
+  };
+
+  const handlePgnUpload = (pgnContent: string) => {
+    // Process the PGN content and extract games
+    // This is a placeholder - actual PGN processing would happen here
+    console.log("PGN content received, length:", pgnContent.length);
+    
+    // For now, we'll set empty games array which will be processed by the analyzer
+    setGames([{ pgn: pgnContent }]);
+    setUserInfo({
+      username: 'PGN User',
+      platform: 'uploaded'
+    });
     setShowAnalyzer(true);
   };
 
@@ -30,7 +46,11 @@ const Index: React.FC = () => {
         <div className="container mx-auto p-6">
           <h1 className="text-4xl font-bold text-center mb-8">Chess Performance Analyzer</h1>
           <div className="max-w-2xl mx-auto">
-            <UserForm onSubmit={handleFormSubmit} />
+            <UserForm 
+              onSubmit={handleFormSubmit} 
+              onPgnUpload={handlePgnUpload} 
+              isLoading={isLoading}
+            />
           </div>
         </div>
       ) : (
