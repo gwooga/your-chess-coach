@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -352,7 +351,7 @@ const ChessAnalyzer: React.FC = () => {
             </TabsList>
             
             <TabsContent value="coach" className="mt-0">
-              <CoachTab analysis={userAnalysis} />
+              <CoachTab analysis={userAnalysis} variant="all" />
             </TabsContent>
             
             <TabsContent value="all" className="mt-0">

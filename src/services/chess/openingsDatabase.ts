@@ -72,17 +72,8 @@ export const openingNames: Record<string, string> = {
   "d4 Nf6 c4 c5": "Benoni Defense",
   "d4 Nf6 Bf4": "London System",
   
-  // Add more common openings for black pieces
-  "e4 c5": "Sicilian Defense",
-  "e4 e6": "French Defense",
-  "e4 e5": "Open Game",
-  "e4 c6": "Caro-Kann Defense",
-  "e4 d6": "Pirc Defense",
-  "e4 g6": "Modern Defense",
-  "d4 d5": "Queen's Pawn Game",
-  "d4 Nf6": "Indian Defense",
-  "d4 f5": "Dutch Defense",
-  "c4 e5": "English Opening",
+  // Common black responses (without duplicates)
+  // Removed duplicate entries here to fix the error
 };
 
 // Get opening name based on sequence
