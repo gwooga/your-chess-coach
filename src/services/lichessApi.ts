@@ -57,7 +57,15 @@ export const fetchLichessGames = async (
       .trim()
       .split('\n')
       .filter(line => line.trim() !== '')
-      .map(line => JSON.parse(line));
+      .map(line => {
+        try {
+          return JSON.parse(line);
+        } catch (e) {
+          console.error('Error parsing JSON line:', line);
+          return null;
+        }
+      })
+      .filter(game => game !== null);
 
     // Add proper processing for lichess games to ensure we have the right format
     const processedGames = games.map(game => {
@@ -66,6 +74,8 @@ export const fetchLichessGames = async (
       if (game.players) {
         const blackUser = game.players.black.user;
         if (blackUser && blackUser.name && blackUser.name.toLowerCase() === username.toLowerCase()) {
+          playerColor = 'black';
+        } else if (blackUser && blackUser.id && blackUser.id.toLowerCase() === username.toLowerCase()) {
           playerColor = 'black';
         }
       }
