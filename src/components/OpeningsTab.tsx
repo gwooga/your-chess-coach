@@ -21,31 +21,9 @@ const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings }) => 
   
   // Create combined meaningful openings data
   const combinedMeaningful = React.useMemo(() => {
-    const whiteMeaningful = data.meaningfulWhite?.map(opening => ({
-      ...opening,
-      color: 'white' as const
-    })) || [];
-    
-    const blackMeaningful = data.meaningfulBlack?.map(opening => ({
-      ...opening,
-      color: 'black' as const
-    })) || [];
-    
-    // Combine and calculate impact score (games × max(win%, loss%))
-    const combined = [...whiteMeaningful, ...blackMeaningful].map(opening => ({
-      ...opening,
-      score: opening.games * Math.max(opening.winsPercentage, opening.lossesPercentage) / 100
-    }));
-    
-    // Sort by impact score descending
-    const sorted = combined.sort((a, b) => (b.score || 0) - (a.score || 0));
-    
-    // Add impact rank
-    return sorted.slice(0, 20).map((opening, index) => ({
-      ...opening,
-      impact: index + 1
-    }));
-  }, [data.meaningfulWhite, data.meaningfulBlack]);
+    // Ensure both White and Black openings are combined
+    return data.meaningfulCombined || [];
+  }, [data.meaningfulCombined]);
   
   // Function to determine if a deeper move table should be displayed
   const shouldDisplayDepthTable = (whiteData?: any[], blackData?: any[]): boolean => {
@@ -57,6 +35,8 @@ const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings }) => 
     
     return whiteHighest >= 1 || blackHighest >= 1;
   };
+  
+  const totalGames = data.totalWhiteGames + data.totalBlackGames;
   
   return (
     <div className="space-y-6">
@@ -78,7 +58,7 @@ const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings }) => 
               <div>
                 <MeaningfulOpeningsTable 
                   data={combinedMeaningful} 
-                  totalGames={data.totalWhiteGames + data.totalBlackGames}
+                  totalGames={totalGames}
                 />
               </div>
             </div>

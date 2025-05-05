@@ -114,7 +114,7 @@ const MeaningfulOpeningsTable: React.FC<MeaningfulOpeningsTableProps> = ({ data,
             <TableHead>Opening</TableHead>
             <TableHead>Sequence</TableHead>
             <TableHead className="cursor-pointer" onClick={() => handleSort('gamesPercentage')}>
-              Games (N) {getSortIcon('gamesPercentage')}
+              Games (%) {getSortIcon('gamesPercentage')}
             </TableHead>
             <TableHead className="cursor-pointer text-green-600" onClick={() => handleSort('winsPercentage')}>
               Wins (%) {getSortIcon('winsPercentage')}

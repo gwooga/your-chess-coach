@@ -258,6 +258,7 @@ export const findMeaningfulOpenings = (
     .slice(0, 20);
   
   // Create combined list with impact rankings
+  // Ensure we combine both White and Black openings
   const meaningfulCombined = [...meaningfulWhite, ...meaningfulBlack]
     .sort((a, b) => b.score! - a.score!)
     .slice(0, 20)
@@ -297,7 +298,8 @@ export const formatOpeningData = (sequences: Record<string, any>, depth: number,
       drawsPercentage: parseFloat((opening.draws / opening.games * 100).toFixed(1)),
       losses: opening.losses,
       lossesPercentage: parseFloat((opening.losses / opening.games * 100).toFixed(1)),
-      fen: pgnToFen(opening.sequence)
+      fen: pgnToFen(opening.sequence),
+      color: color // Add color info to each opening
     }))
     .sort((a, b) => b.games - a.games)
     .slice(0, 10);
