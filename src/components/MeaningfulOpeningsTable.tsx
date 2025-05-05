@@ -115,6 +115,14 @@ const MeaningfulOpeningsTable: React.FC<MeaningfulOpeningsTableProps> = ({ data,
             <TableHead>Sequence</TableHead>
             <TableHead className="cursor-pointer" onClick={() => handleSort('gamesPercentage')}>
               Games (%) {getSortIcon('gamesPercentage')}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground cursor-help ml-1" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>Percentage of your games with this opening based on the color total (not overall total).</p>
+                </TooltipContent>
+              </Tooltip>
             </TableHead>
             <TableHead className="cursor-pointer text-green-600" onClick={() => handleSort('winsPercentage')}>
               Wins (%) {getSortIcon('winsPercentage')}
@@ -130,9 +138,11 @@ const MeaningfulOpeningsTable: React.FC<MeaningfulOpeningsTableProps> = ({ data,
         </TableHeader>
         <TableBody>
           {sortedData.map((opening, index) => (
-            <TableRow key={index}>
+            <TableRow key={index} className={opening.color === 'black' ? 'bg-gray-50' : ''}>
               <TableCell>{opening.impact || index + 1}</TableCell>
-              <TableCell>{opening.color?.charAt(0).toUpperCase() + opening.color?.slice(1) || '-'}</TableCell>
+              <TableCell className={`font-medium ${opening.color === 'white' ? 'text-amber-700' : 'text-blue-700'}`}>
+                {opening.color?.charAt(0).toUpperCase() + opening.color?.slice(1) || '-'}
+              </TableCell>
               <TableCell className="font-medium">{opening.name || "Unnamed Opening"}</TableCell>
               <TableCell className="font-mono text-xs">{formatSequence(opening.sequence)}</TableCell>
               <TableCell>{opening.gamesPercentage}%</TableCell>

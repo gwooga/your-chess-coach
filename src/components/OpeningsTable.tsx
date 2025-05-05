@@ -17,7 +17,8 @@ import {
 import { Button } from "@/components/ui/button";
 import ChessBoard from './ChessBoard';
 import { OpeningData } from '@/utils/types';
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface OpeningsTableProps {
   data: OpeningData[];
@@ -93,6 +94,9 @@ const OpeningsTable: React.FC<OpeningsTableProps> = ({ data, title, totalGames }
     return result;
   };
   
+  // Determine color based on title
+  const color = title.includes('White') ? 'white' : 'black';
+  
   return (
     <div className="my-4 overflow-x-auto border rounded-lg">
       <div 
@@ -112,16 +116,24 @@ const OpeningsTable: React.FC<OpeningsTableProps> = ({ data, title, totalGames }
               <TableHead>Opening</TableHead>
               <TableHead>Sequence</TableHead>
               <TableHead className="cursor-pointer" onClick={() => handleSort('games')}>
-                Games {getSortIcon('games')}
+                Games (%) {getSortIcon('games')}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-muted-foreground cursor-help ml-1" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p>Percentage of your games with this opening based on color total.</p>
+                  </TooltipContent>
+                </Tooltip>
               </TableHead>
               <TableHead className="cursor-pointer text-green-600" onClick={() => handleSort('winsPercentage')}>
-                Wins {getSortIcon('winsPercentage')}
+                Wins (%) {getSortIcon('winsPercentage')}
               </TableHead>
               <TableHead className="cursor-pointer text-gray-600" onClick={() => handleSort('drawsPercentage')}>
-                Draws {getSortIcon('drawsPercentage')}
+                Draws (%) {getSortIcon('drawsPercentage')}
               </TableHead>
               <TableHead className="cursor-pointer text-red-600" onClick={() => handleSort('lossesPercentage')}>
-                Losses {getSortIcon('lossesPercentage')}
+                Losses (%) {getSortIcon('lossesPercentage')}
               </TableHead>
               <TableHead>Board</TableHead>
             </TableRow>
@@ -142,10 +154,10 @@ const OpeningsTable: React.FC<OpeningsTableProps> = ({ data, title, totalGames }
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="center">
                       <div className="p-4">
-                        <ChessBoard fen={opening.fen} side={title.includes('White') ? 'white' : 'black'} />
+                        <ChessBoard fen={opening.fen} side={color} />
                         <div className="mt-2 text-center">
                           <a 
-                            href={getLichessUrl(opening.fen, title.includes('White') ? 'white' : 'black')} 
+                            href={getLichessUrl(opening.fen, color)} 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="text-sm text-chess-purple hover:underline"
@@ -159,6 +171,13 @@ const OpeningsTable: React.FC<OpeningsTableProps> = ({ data, title, totalGames }
                 </TableCell>
               </TableRow>
             ))}
+            {sortedData.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-4 text-gray-500">
+                  No data available for this opening type
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       )}
