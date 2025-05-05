@@ -297,8 +297,7 @@ export const formatOpeningData = (sequences: Record<string, any>, depth: number,
       drawsPercentage: parseFloat((opening.draws / opening.games * 100).toFixed(1)),
       losses: opening.losses,
       lossesPercentage: parseFloat((opening.losses / opening.games * 100).toFixed(1)),
-      fen: pgnToFen(opening.sequence),
-      color // Add color information to each opening
+      fen: pgnToFen(opening.sequence)
     }))
     .sort((a, b) => b.games - a.games)
     .slice(0, 10);

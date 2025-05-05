@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,12 +13,12 @@ import { toast } from '@/hooks/use-toast';
 import { Chess } from 'chess.js';
 
 interface UserFormProps {
-  onSubmit: (games: any[], userInfo: UserInfo, timeRange: TimeRange) => void;
-  onPgnUpload?: (pgnContent: string) => void;
-  isLoading?: boolean;
+  onSubmit: (userInfo: UserInfo, timeRange: TimeRange) => void;
+  onPgnUpload: (pgnContent: string) => void;
+  isLoading: boolean;
 }
 
-const UserForm: React.FC<UserFormProps> = ({ onSubmit, onPgnUpload, isLoading = false }) => {
+const UserForm: React.FC<UserFormProps> = ({ onSubmit, onPgnUpload, isLoading }) => {
   const [username, setUsername] = useState('');
   const [platform, setPlatform] = useState<Platform>('chess.com');
   const [timeRange, setTimeRange] = useState<TimeRange>('last90');
@@ -30,16 +31,10 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, onPgnUpload, isLoading = 
       return;
     }
     
-    // Since we don't have games data here, pass an empty array
-    // The parent component will handle fetching the actual games
-    onSubmit(
-      [], // Empty array for games - will be populated by parent
-      {
-        username: username.trim(),
-        platform,
-      }, 
-      timeRange
-    );
+    onSubmit({
+      username: username.trim(),
+      platform,
+    }, timeRange);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
