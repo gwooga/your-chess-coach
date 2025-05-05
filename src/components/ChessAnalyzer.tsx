@@ -70,7 +70,7 @@ const ChessAnalyzer: React.FC<ChessAnalyzerProps> = ({ onClose, games, userInfo,
         <div className="text-red-500">Error: {error}</div>
       )}
       
-      {userAnalysis && (
+      {userAnalysis && !isLoading && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-3xl font-bold">Analysis Results</h2>

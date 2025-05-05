@@ -46,6 +46,8 @@ export const fetchLichessGames = async (
     // Construct the API URL with parameters - ensuring we're getting opening data
     const url = `${BASE_URL}/games/user/${username}?since=${since}&max=${maxGames}&perfType=bullet,blitz,rapid,classical&opening=true&analyzed=true&pgnInJson=true`;
     
+    console.log('Fetching Lichess games from URL:', url);
+    
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Failed to fetch Lichess games: ${response.status}`);
@@ -53,6 +55,13 @@ export const fetchLichessGames = async (
     
     // Lichess API returns ndjson (newline delimited JSON)
     const text = await response.text();
+    console.log('Received Lichess games text, length:', text.length);
+    
+    if (!text || text.trim() === '') {
+      console.log('No game data received from Lichess API');
+      return [];
+    }
+    
     const games = text
       .trim()
       .split('\n')
@@ -67,15 +76,17 @@ export const fetchLichessGames = async (
       })
       .filter(game => game !== null);
 
+    console.log(`Successfully parsed ${games.length} Lichess games`);
+    
     // Add proper processing for lichess games to ensure we have the right format
     const processedGames = games.map(game => {
       // Add player color determination
       let playerColor = 'white';
       if (game.players) {
         const blackUser = game.players.black.user;
-        if (blackUser && blackUser.name && blackUser.name.toLowerCase() === username.toLowerCase()) {
-          playerColor = 'black';
-        } else if (blackUser && blackUser.id && blackUser.id.toLowerCase() === username.toLowerCase()) {
+        // Check both name and id fields for the username
+        if (blackUser && ((blackUser.name && blackUser.name.toLowerCase() === username.toLowerCase()) || 
+                         (blackUser.id && blackUser.id.toLowerCase() === username.toLowerCase()))) {
           playerColor = 'black';
         }
       }
@@ -86,16 +97,19 @@ export const fetchLichessGames = async (
       else if (playerColor === 'black' && game.winner === 'black') result = 'win';
       else if (game.winner) result = 'loss';
       
+      // Add username to the game for consistent processing
       return {
         ...game,
         playerColor,
-        result
+        result,
+        username: username
       };
     });
     
-    console.log(`Fetched ${processedGames.length} games from Lichess for ${username}`);
+    console.log(`Processed ${processedGames.length} games from Lichess for ${username}`);
     
     if (processedGames.length === 0) {
+      console.log('No games found for this user in the selected time range');
       throw new Error('No games found for this user in the selected time range');
     }
     
