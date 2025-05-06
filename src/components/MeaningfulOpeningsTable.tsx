@@ -113,14 +113,14 @@ const MeaningfulOpeningsTable: React.FC<MeaningfulOpeningsTableProps> = ({ data,
             <TableHead>Color</TableHead>
             <TableHead>Opening</TableHead>
             <TableHead>Sequence</TableHead>
-            <TableHead className="cursor-pointer" onClick={() => handleSort('gamesPercentage')}>
-              Games (%) {getSortIcon('gamesPercentage')}
+            <TableHead className="cursor-pointer" onClick={() => handleSort('games')}>
+              Games (N) {getSortIcon('games')}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="h-4 w-4 text-muted-foreground cursor-help ml-1" />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
-                  <p>Percentage of your games with this opening based on the color total (not overall total).</p>
+                  <p>Number of your games with this opening. Percentage is based on color total, not overall total.</p>
                 </TooltipContent>
               </Tooltip>
             </TableHead>
@@ -145,7 +145,7 @@ const MeaningfulOpeningsTable: React.FC<MeaningfulOpeningsTableProps> = ({ data,
               </TableCell>
               <TableCell className="font-medium">{opening.name || "Unnamed Opening"}</TableCell>
               <TableCell className="font-mono text-xs">{formatSequence(opening.sequence)}</TableCell>
-              <TableCell>{opening.gamesPercentage}%</TableCell>
+              <TableCell>{opening.games} ({opening.gamesPercentage}%)</TableCell>
               <TableCell className="text-green-600 font-medium">{opening.winsPercentage}%</TableCell>
               <TableCell className="text-gray-600">{opening.drawsPercentage}%</TableCell>
               <TableCell className="text-red-600 font-medium">{opening.lossesPercentage}%</TableCell>

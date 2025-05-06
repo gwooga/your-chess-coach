@@ -116,13 +116,13 @@ const OpeningsTable: React.FC<OpeningsTableProps> = ({ data, title, totalGames }
               <TableHead>Opening</TableHead>
               <TableHead>Sequence</TableHead>
               <TableHead className="cursor-pointer" onClick={() => handleSort('games')}>
-                Games (%) {getSortIcon('games')}
+                Games (N) {getSortIcon('games')}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Info className="h-4 w-4 text-muted-foreground cursor-help ml-1" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">
-                    <p>Percentage of your games with this opening based on color total.</p>
+                    <p>Number of your games with this opening based on color total.</p>
                   </TooltipContent>
                 </Tooltip>
               </TableHead>
@@ -143,7 +143,7 @@ const OpeningsTable: React.FC<OpeningsTableProps> = ({ data, title, totalGames }
               <TableRow key={index}>
                 <TableCell className="font-medium">{opening.name || "Unnamed Opening"}</TableCell>
                 <TableCell className="font-mono text-xs">{formatSequence(opening.sequence)}</TableCell>
-                <TableCell>{opening.gamesPercentage}%</TableCell>
+                <TableCell>{opening.games} ({opening.gamesPercentage}%)</TableCell>
                 <TableCell className="text-green-600 font-medium">{opening.winsPercentage}%</TableCell>
                 <TableCell className="text-gray-600">{opening.drawsPercentage}%</TableCell>
                 <TableCell className="text-red-600 font-medium">{opening.lossesPercentage}%</TableCell>

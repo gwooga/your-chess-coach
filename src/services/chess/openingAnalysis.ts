@@ -1,65 +1,109 @@
 
 import { OpeningData, OpeningsTableData, ChessVariant } from '@/utils/types';
 import { getOpeningName } from './openingsDatabase';
-import { pgnToFen } from './chessUtils';
+import { pgnToFen, extractOpeningName, filterGamesByPlayerColor } from './chessUtils';
 
-// Extract opening sequences from games
-export const extractOpeningSequences = (games: any[]): Record<string, any> => {
-  const openingSequences: Record<string, any> = {
-    white2: {},
-    black2: {},
-    white3: {},
-    black3: {},
-    white4: {},
-    black4: {},
-    white5: {},
-    black5: {},
-    white6: {},
-    black6: {},
-    white7: {},
-    black7: {},
-    white8: {},
-    black8: {},
-    white10: {},
-    black10: {},
+// Analyze opening sequences based on games and user info
+export const analyzeOpenings = (games: any[], username: string): {
+  openings: Record<ChessVariant, OpeningsTableData>;
+  totalWhiteGames: number;
+  totalBlackGames: number;
+} => {
+  // First, separate games by variant and color
+  const variantGames = {
+    all: games,
+    blitz: games.filter(g => {
+      const timeControl = g.time_control || '';
+      return timeControl.includes('blitz') || (parseInt(timeControl) >= 180 && parseInt(timeControl) <= 600);
+    }),
+    rapid: games.filter(g => {
+      const timeControl = g.time_control || '';
+      return timeControl.includes('rapid') || (parseInt(timeControl) > 600);
+    }),
+    bullet: games.filter(g => {
+      const timeControl = g.time_control || '';
+      return timeControl.includes('bullet') || (parseInt(timeControl) < 180);
+    })
   };
   
-  let totalWhiteGames = 0;
-  let totalBlackGames = 0;
+  // Process each variant
+  const result: Record<ChessVariant, OpeningsTableData> = {} as Record<ChessVariant, OpeningsTableData>;
   
+  // Overall totals
+  const totalWhiteGames = filterGamesByPlayerColor(games, username, 'white').length;
+  const totalBlackGames = filterGamesByPlayerColor(games, username, 'black').length;
+  
+  // Process each variant
+  for (const variant of Object.keys(variantGames) as ChessVariant[]) {
+    // Get games for this variant
+    const variantGameSet = variantGames[variant];
+    
+    // Separate by color
+    const whiteGames = filterGamesByPlayerColor(variantGameSet, username, 'white');
+    const blackGames = filterGamesByPlayerColor(variantGameSet, username, 'black');
+    
+    // Extract opening sequences
+    const sequences = extractOpeningSequences(whiteGames, blackGames, username);
+    
+    // Find meaningful openings
+    const { meaningfulWhite, meaningfulBlack, meaningfulCombined } = findMeaningfulOpenings(
+      sequences, 
+      whiteGames.length, 
+      blackGames.length
+    );
+    
+    // Format opening data for different move depths
+    result[variant] = {
+      white2: formatOpeningData(sequences.white2, whiteGames.length, 'white'),
+      black2: formatOpeningData(sequences.black2, blackGames.length, 'black'),
+      white3: formatOpeningData(sequences.white3, whiteGames.length, 'white'),
+      black3: formatOpeningData(sequences.black3, blackGames.length, 'black'),
+      white4: formatOpeningData(sequences.white4, whiteGames.length, 'white'),
+      black4: formatOpeningData(sequences.black4, blackGames.length, 'black'),
+      white5: formatOpeningData(sequences.white5, whiteGames.length, 'white'),
+      black5: formatOpeningData(sequences.black5, blackGames.length, 'black'),
+      white6: formatOpeningData(sequences.white6, whiteGames.length, 'white'),
+      black6: formatOpeningData(sequences.black6, blackGames.length, 'black'),
+      white7: formatOpeningData(sequences.white7, whiteGames.length, 'white'),
+      black7: formatOpeningData(sequences.black7, blackGames.length, 'black'),
+      white8: formatOpeningData(sequences.white8, whiteGames.length, 'white'),
+      black8: formatOpeningData(sequences.black8, blackGames.length, 'black'),
+      white10: formatOpeningData(sequences.white10, whiteGames.length, 'white'),
+      black10: formatOpeningData(sequences.black10, blackGames.length, 'black'),
+      totalWhiteGames: whiteGames.length,
+      totalBlackGames: blackGames.length,
+      meaningfulWhite,
+      meaningfulBlack,
+      meaningfulCombined
+    };
+  }
+  
+  return {
+    openings: result,
+    totalWhiteGames,
+    totalBlackGames
+  };
+};
+
+// Extract opening sequences from games
+export const extractOpeningSequences = (whiteGames: any[], blackGames: any[], username: string) => {
+  const sequences = {
+    white2: {}, white3: {}, white4: {}, white5: {}, white6: {}, white7: {}, white8: {}, white10: {},
+    black2: {}, black3: {}, black4: {}, black5: {}, black6: {}, black7: {}, black8: {}, black10: {}
+  };
+  
+  // Process white games
+  processGames(whiteGames, sequences, 'white', username);
+  
+  // Process black games
+  processGames(blackGames, sequences, 'black', username);
+  
+  return sequences;
+};
+
+// Process games to extract opening sequences
+const processGames = (games: any[], sequences: Record<string, any>, color: 'white' | 'black', username: string) => {
   games.forEach(game => {
-    // Extract the player's color
-    let playerColor = game.playerColor || 'white';
-    
-    // If playerColor is not already determined
-    if (!game.playerColor) {
-      // For Chess.com games
-      if (game.black && game.black.username && 
-          game.white && game.white.username) {
-        if (typeof game.black.username === 'string' && 
-            typeof game.white.username === 'string' &&
-            game.black.username.toLowerCase() === game.username?.toLowerCase()) {
-          playerColor = 'black';
-        }
-      } 
-      // For Lichess games
-      else if (game.players) {
-        const blackUser = game.players.black.user;
-        const whiteUser = game.players.white.user;
-        if (blackUser && whiteUser && blackUser.name && 
-            blackUser.name.toLowerCase() === game.username?.toLowerCase()) {
-          playerColor = 'black';
-        }
-      }
-    }
-    
-    // Count total games by color
-    if (playerColor === 'white') {
-      totalWhiteGames++;
-    } else {
-      totalBlackGames++;
-    }
-    
     // Extract moves from the game
     let moves;
     if (game.pgn) {
@@ -75,6 +119,12 @@ export const extractOpeningSequences = (games: any[]): Record<string, any> => {
     
     if (!moves) return;
     
+    // Extract opening name from headers
+    let openingName = "Unknown Opening";
+    if (game.headers) {
+      openingName = extractOpeningName(game.headers);
+    }
+    
     // Process the moves to extract opening sequences at different lengths
     const movePairs = moves.split(/\d+\./).filter(Boolean);
     
@@ -82,13 +132,15 @@ export const extractOpeningSequences = (games: any[]): Record<string, any> => {
     [2, 3, 4, 5, 6, 7, 8, 10].forEach(depth => {
       if (movePairs.length >= depth) {
         const sequenceMovePairs = movePairs.slice(0, depth).join(' ').trim();
-        const sequenceKey = `${playerColor}${depth}`;
+        const sequenceKey = `${color}${depth}`;
         
-        // Get opening name
-        const openingName = getOpeningName(sequenceMovePairs);
+        // If opening name wasn't found in headers, try to get it from the database
+        if (openingName === "Unknown Opening") {
+          openingName = getOpeningName(sequenceMovePairs);
+        }
         
-        if (!openingSequences[sequenceKey][sequenceMovePairs]) {
-          openingSequences[sequenceKey][sequenceMovePairs] = {
+        if (!sequences[sequenceKey][sequenceMovePairs]) {
+          sequences[sequenceKey][sequenceMovePairs] = {
             name: openingName,
             sequence: sequenceMovePairs,
             games: 1,
@@ -97,20 +149,14 @@ export const extractOpeningSequences = (games: any[]): Record<string, any> => {
             losses: game.result === 'loss' ? 1 : 0,
           };
         } else {
-          openingSequences[sequenceKey][sequenceMovePairs].games++;
-          if (game.result === 'win') openingSequences[sequenceKey][sequenceMovePairs].wins++;
-          else if (game.result === 'draw') openingSequences[sequenceKey][sequenceMovePairs].draws++;
-          else if (game.result === 'loss') openingSequences[sequenceKey][sequenceMovePairs].losses++;
+          sequences[sequenceKey][sequenceMovePairs].games++;
+          if (game.result === 'win') sequences[sequenceKey][sequenceMovePairs].wins++;
+          else if (game.result === 'draw') sequences[sequenceKey][sequenceMovePairs].draws++;
+          else if (game.result === 'loss') sequences[sequenceKey][sequenceMovePairs].losses++;
         }
       }
     });
   });
-  
-  return {
-    sequences: openingSequences,
-    totalWhiteGames,
-    totalBlackGames
-  };
 };
 
 // Analyze opening data to find most meaningful openings
@@ -123,7 +169,7 @@ export const findMeaningfulOpenings = (
   meaningfulBlack: OpeningData[];
   meaningfulCombined: OpeningData[];
 } => {
-  // Define typed openingSeq type to avoid 'unknown' errors
+  // Define typed openingSeq type
   interface OpeningSeq {
     name: string;
     sequence: string;
@@ -133,7 +179,7 @@ export const findMeaningfulOpenings = (
     losses: number;
   }
 
-  // Function to collect sequences across all depths
+  // Function to collect sequences across all depths by color
   const collectSequencesByColor = (color: 'white' | 'black') => {
     const allSequences: Record<string, OpeningSeq> = {};
     
@@ -143,7 +189,7 @@ export const findMeaningfulOpenings = (
       if (!sequences[key]) continue;
       
       for (const [seq, data] of Object.entries(sequences[key])) {
-        // Only consider sequences with enough games
+        // Only consider sequences with enough games (minimum threshold)
         if ((data as OpeningSeq).games >= 3) {
           allSequences[seq] = data as OpeningSeq;
         }
@@ -174,91 +220,23 @@ export const findMeaningfulOpenings = (
       return blackSequences[b].games - blackSequences[a].games;
     });
   
-  // Prune redundant prefixes
+  // Prune redundant prefixes for more targeted analysis
   const finalWhiteSequences: OpeningSeq[] = [];
   const finalBlackSequences: OpeningSeq[] = [];
   const usedWhitePrefixes = new Set<string>();
   const usedBlackPrefixes = new Set<string>();
   
   // Process white sequences
-  for (const seq of sortedWhiteKeys) {
-    // Skip if this sequence is a prefix of an already chosen sequence
-    let isPrefix = false;
-    for (const prefix of usedWhitePrefixes) {
-      if (seq.startsWith(prefix)) {
-        isPrefix = true;
-        break;
-      }
-    }
-    
-    if (!isPrefix) {
-      finalWhiteSequences.push(whiteSequences[seq]);
-      usedWhitePrefixes.add(seq);
-      
-      // Stop if we have enough sequences
-      if (finalWhiteSequences.length >= 20) break;
-    }
-  }
+  processMeaningfulSequences(sortedWhiteKeys, whiteSequences, finalWhiteSequences, usedWhitePrefixes);
   
   // Process black sequences
-  for (const seq of sortedBlackKeys) {
-    // Skip if this sequence is a prefix of an already chosen sequence
-    let isPrefix = false;
-    for (const prefix of usedBlackPrefixes) {
-      if (seq.startsWith(prefix)) {
-        isPrefix = true;
-        break;
-      }
-    }
-    
-    if (!isPrefix) {
-      finalBlackSequences.push(blackSequences[seq]);
-      usedBlackPrefixes.add(seq);
-      
-      // Stop if we have enough sequences
-      if (finalBlackSequences.length >= 20) break;
-    }
-  }
+  processMeaningfulSequences(sortedBlackKeys, blackSequences, finalBlackSequences, usedBlackPrefixes);
   
   // Calculate percentages and impact scores
-  const processSequences = (seqs: OpeningSeq[], totalGames: number, color: 'white' | 'black'): OpeningData[] => {
-    return seqs.map(seq => {
-      const gamesPercentage = parseFloat((seq.games / totalGames * 100).toFixed(1));
-      const winsPercentage = parseFloat((seq.wins / seq.games * 100).toFixed(1));
-      const drawsPercentage = parseFloat((seq.draws / seq.games * 100).toFixed(1));
-      const lossesPercentage = parseFloat((seq.losses / seq.games * 100).toFixed(1));
-      
-      // Calculate impact score (games × max(win%, loss%))
-      const impactScore = seq.games * Math.max(winsPercentage, lossesPercentage) / 100;
-      
-      return {
-        name: seq.name,
-        sequence: seq.sequence,
-        games: seq.games,
-        gamesPercentage,
-        wins: seq.wins,
-        winsPercentage,
-        draws: seq.draws,
-        drawsPercentage,
-        losses: seq.losses,
-        lossesPercentage,
-        fen: pgnToFen(seq.sequence),
-        score: impactScore,
-        color
-      };
-    });
-  };
-  
-  const meaningfulWhite = processSequences(finalWhiteSequences, totalWhiteGames, 'white')
-    .sort((a, b) => b.score! - a.score!)
-    .slice(0, 20);
-  
-  const meaningfulBlack = processSequences(finalBlackSequences, totalBlackGames, 'black')
-    .sort((a, b) => b.score! - a.score!)
-    .slice(0, 20);
+  const meaningfulWhite = processOpeningData(finalWhiteSequences, totalWhiteGames, 'white');
+  const meaningfulBlack = processOpeningData(finalBlackSequences, totalBlackGames, 'black');
   
   // Create combined list with impact rankings
-  // Ensure we combine both White and Black openings
   const meaningfulCombined = [...meaningfulWhite, ...meaningfulBlack]
     .sort((a, b) => b.score! - a.score!)
     .slice(0, 20)
@@ -270,24 +248,68 @@ export const findMeaningfulOpenings = (
   return { meaningfulWhite, meaningfulBlack, meaningfulCombined };
 };
 
-// Format opening data for display
-export const formatOpeningData = (sequences: Record<string, any>, depth: number, color: 'white' | 'black', totalGames: number): OpeningData[] => {
-  // Define typed openingSeq type to avoid 'unknown' errors
-  interface OpeningSeq {
-    name: string;
-    sequence: string;
-    games: number;
-    wins: number;
-    draws: number;
-    losses: number;
+// Process sequences for meaningful openings analysis
+const processMeaningfulSequences = (
+  sortedKeys: string[],
+  sequences: Record<string, any>,
+  finalSequences: any[],
+  usedPrefixes: Set<string>
+) => {
+  for (const seq of sortedKeys) {
+    // Skip if this sequence is a prefix of an already chosen sequence
+    let isPrefix = false;
+    for (const prefix of usedPrefixes) {
+      if (seq.startsWith(prefix)) {
+        isPrefix = true;
+        break;
+      }
+    }
+    
+    if (!isPrefix) {
+      finalSequences.push(sequences[seq]);
+      usedPrefixes.add(seq);
+      
+      // Stop if we have enough sequences
+      if (finalSequences.length >= 20) break;
+    }
   }
+};
 
-  const key = `${color}${depth}`;
+// Process opening data with statistics
+const processOpeningData = (seqs: any[], totalGames: number, color: 'white' | 'black'): OpeningData[] => {
+  return seqs.map(seq => {
+    const gamesPercentage = parseFloat((seq.games / totalGames * 100).toFixed(1));
+    const winsPercentage = parseFloat((seq.wins / seq.games * 100).toFixed(1));
+    const drawsPercentage = parseFloat((seq.draws / seq.games * 100).toFixed(1));
+    const lossesPercentage = parseFloat((seq.losses / seq.games * 100).toFixed(1));
+    
+    // Calculate impact score (games × max(win%, loss%))
+    const impactScore = seq.games * Math.max(winsPercentage, lossesPercentage) / 100;
+    
+    return {
+      name: seq.name,
+      sequence: seq.sequence,
+      games: seq.games,
+      gamesPercentage,
+      wins: seq.wins,
+      winsPercentage,
+      draws: seq.draws,
+      drawsPercentage,
+      losses: seq.losses,
+      lossesPercentage,
+      fen: pgnToFen(seq.sequence),
+      score: impactScore,
+      color
+    };
+  }).sort((a, b) => b.score! - a.score!).slice(0, 20);
+};
+
+// Format opening data for display
+export const formatOpeningData = (sequences: Record<string, any>, totalGames: number, color: 'white' | 'black'): OpeningData[] => {
+  if (!sequences) return [];
   
-  if (!sequences[key]) return [];
-  
-  return Object.values(sequences[key])
-    .map((opening: OpeningSeq) => ({
+  return Object.values(sequences)
+    .map((opening: any) => ({
       name: opening.name,
       sequence: opening.sequence,
       games: opening.games,
@@ -299,8 +321,8 @@ export const formatOpeningData = (sequences: Record<string, any>, depth: number,
       losses: opening.losses,
       lossesPercentage: parseFloat((opening.losses / opening.games * 100).toFixed(1)),
       fen: pgnToFen(opening.sequence),
-      color: color // Add color info to each opening
+      color: color
     }))
-    .sort((a, b) => b.games - a.games)
+    .sort((a: any, b: any) => b.games - a.games)
     .slice(0, 10);
 };
