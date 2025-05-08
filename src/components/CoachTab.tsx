@@ -102,6 +102,7 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant }) => {
             <CoachOpenings 
               variantData={variantData}
               totalGames={variantData.totalWhiteGames + variantData.totalBlackGames}
+              variant={variant}
             />
           </TabsContent>
         </Tabs>
