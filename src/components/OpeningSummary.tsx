@@ -68,13 +68,13 @@ const OpeningSummary: React.FC<OpeningSummaryProps> = ({ data, variant }) => {
   
   // Extract root lines for both colors
   const whiteRootLines = extractRootLines(
-    data.white3 || [], 
+    data.white2 || [], 
     data.totalWhiteGames,
     'white'
   );
   
   const blackRootLines = extractRootLines(
-    data.black3 || [], 
+    data.black2 || [], 
     data.totalBlackGames,
     'black'
   );

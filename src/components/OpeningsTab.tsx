@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { LightbulbIcon } from 'lucide-react';
 import MeaningfulOpeningsTable from './MeaningfulOpeningsTable';
 import { shouldDisplayTable } from "@/components/ui/table";
+import OpeningSummary from './OpeningSummary';
 
 interface OpeningsTabProps {
   data: OpeningsTableData;
@@ -17,7 +18,7 @@ interface OpeningsTabProps {
 }
 
 const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings }) => {
-  const [activeSubTab, setActiveSubTab] = useState<string>("highlights");
+  const [activeSubTab, setActiveSubTab] = useState<string>("summary");
   
   // Create combined meaningful openings data
   const combinedMeaningful = React.useMemo(() => {
@@ -45,10 +46,16 @@ const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings }) => 
       </div>
       
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
-        <TabsList className="grid grid-cols-2 mb-8">
+        <TabsList className="grid grid-cols-3 mb-8">
+          <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="highlights">Highlights</TabsTrigger>
           <TabsTrigger value="full-breakdown">Full Breakdown</TabsTrigger>
         </TabsList>
+        
+        {/* Summary Tab Content */}
+        <TabsContent value="summary" className="mt-0">
+          <OpeningSummary data={data} variant={variant} />
+        </TabsContent>
         
         {/* Highlights Tab Content */}
         <TabsContent value="highlights" className="mt-0">

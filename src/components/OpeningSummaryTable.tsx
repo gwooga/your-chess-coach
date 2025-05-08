@@ -1,10 +1,8 @@
 
 import React, { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { OpeningData, ChessVariant } from '@/utils/types';
-import { Button } from '@/components/ui/button';
+import { OpeningData } from '@/utils/types';
 import ChessBoard from './ChessBoard';
-import { EyeIcon } from 'lucide-react';
 
 interface OpeningSummaryTableProps {
   rootLine: OpeningData;
@@ -21,22 +19,6 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
 }) => {
   const [selectedLine, setSelectedLine] = useState<OpeningData>(rootLine);
   
-  // Function to format win/draw/loss percentages
-  const formatPercentage = (percentage: number | undefined) => {
-    if (percentage === undefined) return '0%';
-    return `${Math.round(percentage)}%`;
-  };
-
-  // Format sequence with proper spacing for child lines
-  const formatSequence = (sequence: string, isChild: boolean) => {
-    return isChild ? <span className="pl-6 block">{sequence}</span> : sequence;
-  };
-
-  // Get color class for the table based on the root line's color
-  const getColorClass = (color?: string) => {
-    return color === 'white' ? 'text-amber-700' : 'text-blue-700';
-  };
-
   // Format opening name to be more concise
   const formatOpeningName = (name: string) => {
     // Take just the opening and first sub-label if present
@@ -46,6 +28,12 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
     }
     return name;
   };
+  
+  // Function to format win/draw/loss percentages
+  const formatPercentage = (percentage: number | undefined) => {
+    if (percentage === undefined) return '0%';
+    return `${Math.round(percentage)}%`;
+  };
 
   // Format game count and percentage
   const formatGamesCount = (games: number, totalGamesForColor: number) => {
@@ -53,72 +41,69 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
     return `${games} (${percentage.toFixed(1)}%)`;
   };
 
+  // Get color class for the table based on the root line's color
+  const getColorClass = (color?: string) => {
+    return color === 'white' ? 'text-amber-700' : 'text-blue-700';
+  };
+
+  // Get display name for the table
+  const getTableTitle = () => {
+    const colorDisplay = rootLine.color === 'white' ? 'White' : 'Black';
+    return `${formatOpeningName(rootLine.name)}: '${rootLine.sequence}' (${colorDisplay})`;
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10 border rounded-lg p-4 bg-gray-50">
       <div className="lg:col-span-2">
-        <h3 className="text-lg font-bold mb-3">
-          Table {tableNumber}: Root '{rootLine.sequence}' ({rootLine.color === 'white' ? 'White' : 'Black'})
-        </h3>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[180px]">Opening</TableHead>
-              <TableHead>Sequence</TableHead>
-              <TableHead className="w-[120px]">Games (N)</TableHead>
-              <TableHead className="w-[80px] text-green-600">Wins (%)</TableHead>
-              <TableHead className="w-[80px]">Draws (%)</TableHead>
-              <TableHead className="w-[80px] text-red-600">Losses (%)</TableHead>
-              <TableHead className="w-[80px]">Board</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {/* Root line */}
-            <TableRow className={`font-medium ${getColorClass(rootLine.color)}`}>
-              <TableCell>{formatOpeningName(rootLine.name)}</TableCell>
-              <TableCell>{rootLine.sequence}</TableCell>
-              <TableCell>{formatGamesCount(rootLine.games, totalGames)}</TableCell>
-              <TableCell className="text-green-600">{formatPercentage(rootLine.winsPercentage)}</TableCell>
-              <TableCell>{formatPercentage(rootLine.drawsPercentage)}</TableCell>
-              <TableCell className="text-red-600">{formatPercentage(rootLine.lossesPercentage)}</TableCell>
-              <TableCell>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setSelectedLine(rootLine)}
-                  className="flex items-center gap-1"
-                >
-                  <EyeIcon className="h-4 w-4" /> View
-                </Button>
-              </TableCell>
-            </TableRow>
-            
-            {/* Child lines */}
-            {childLines.map((line, index) => (
-              <TableRow key={index} className={getColorClass(line.color)}>
-                <TableCell>{formatOpeningName(line.name)}</TableCell>
-                <TableCell>{formatSequence(line.sequence, true)}</TableCell>
-                <TableCell>{formatGamesCount(line.games, totalGames)}</TableCell>
-                <TableCell className="text-green-600">{formatPercentage(line.winsPercentage)}</TableCell>
-                <TableCell>{formatPercentage(line.drawsPercentage)}</TableCell>
-                <TableCell className="text-red-600">{formatPercentage(line.lossesPercentage)}</TableCell>
-                <TableCell>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setSelectedLine(line)}
-                    className="flex items-center gap-1"
-                  >
-                    <EyeIcon className="h-4 w-4" /> View
-                  </Button>
-                </TableCell>
+        <h3 className="text-lg font-bold mb-3">{getTableTitle()}</h3>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[180px]">Opening</TableHead>
+                <TableHead>Sequence</TableHead>
+                <TableHead className="w-[120px]">Games (N)</TableHead>
+                <TableHead className="w-[80px] text-chess-win">Wins (%)</TableHead>
+                <TableHead className="w-[80px] text-chess-draw">Draws (%)</TableHead>
+                <TableHead className="w-[80px] text-chess-loss">Losses (%)</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {/* Root line */}
+              <TableRow 
+                className={`font-medium bg-gray-100 hover:bg-gray-200 ${getColorClass(rootLine.color)}`}
+                onMouseEnter={() => setSelectedLine(rootLine)}
+              >
+                <TableCell>{formatOpeningName(rootLine.name)}</TableCell>
+                <TableCell>{rootLine.sequence}</TableCell>
+                <TableCell>{formatGamesCount(rootLine.games, totalGames)}</TableCell>
+                <TableCell className="text-chess-win">{formatPercentage(rootLine.winsPercentage)}</TableCell>
+                <TableCell className="text-chess-draw">{formatPercentage(rootLine.drawsPercentage)}</TableCell>
+                <TableCell className="text-chess-loss">{formatPercentage(rootLine.lossesPercentage)}</TableCell>
+              </TableRow>
+              
+              {/* Child lines */}
+              {childLines.map((line, index) => (
+                <TableRow 
+                  key={index} 
+                  className={getColorClass(line.color)}
+                  onMouseEnter={() => setSelectedLine(line)}
+                >
+                  <TableCell>{formatOpeningName(line.name)}</TableCell>
+                  <TableCell>{line.sequence}</TableCell>
+                  <TableCell>{formatGamesCount(line.games, totalGames)}</TableCell>
+                  <TableCell className="text-chess-win">{formatPercentage(line.winsPercentage)}</TableCell>
+                  <TableCell className="text-chess-draw">{formatPercentage(line.drawsPercentage)}</TableCell>
+                  <TableCell className="text-chess-loss">{formatPercentage(line.lossesPercentage)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
         
-        {/* Coach's glance section */}
+        {/* Coach's notes section */}
         <div className="mt-4 p-4 bg-white border rounded-lg">
-          <h4 className="text-md font-semibold mb-2">Coach's glance</h4>
+          <h4 className="text-md font-semibold mb-2">Coach's notes</h4>
           <div className="space-y-2 text-gray-700">
             <p>
               {rootLine.color === 'white' 
@@ -143,11 +128,11 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
       </div>
       
       {/* Chess board display */}
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center justify-center h-full">
         <h4 className="text-md font-semibold mb-2">Position after: {selectedLine.sequence}</h4>
         <ChessBoard fen={selectedLine.fen || ''} side={selectedLine.color} />
         <p className="mt-4 text-sm text-center text-gray-500">
-          Click "View" next to any line to see the position on the board
+          Hover over any line to see the position on the board
         </p>
       </div>
     </div>
