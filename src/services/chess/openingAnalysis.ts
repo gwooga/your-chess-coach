@@ -1,4 +1,3 @@
-
 import { OpeningData, OpeningsTableData, ChessVariant } from '@/utils/types';
 import { getOpeningName } from './openingsDatabase';
 import { pgnToFen, extractOpeningName, filterGamesByPlayerColor } from './chessUtils';
@@ -45,6 +44,14 @@ export const analyzeOpenings = (games: any[], username: string): {
     // Extract opening sequences
     const sequences = extractOpeningSequences(whiteGames, blackGames, username);
     
+    // Calculate total wins, draws, and losses
+    const totalWhiteWins = whiteGames.filter(g => g.result === 'win').length;
+    const totalBlackWins = blackGames.filter(g => g.result === 'win').length;
+    const totalWhiteDraws = whiteGames.filter(g => g.result === 'draw').length;
+    const totalBlackDraws = blackGames.filter(g => g.result === 'draw').length;
+    const totalWhiteLosses = whiteGames.filter(g => g.result === 'loss').length;
+    const totalBlackLosses = blackGames.filter(g => g.result === 'loss').length;
+    
     // Find meaningful openings
     const { meaningfulWhite, meaningfulBlack, meaningfulCombined } = findMeaningfulOpenings(
       sequences, 
@@ -72,6 +79,12 @@ export const analyzeOpenings = (games: any[], username: string): {
       black10: formatOpeningData(sequences.black10, blackGames.length, 'black'),
       totalWhiteGames: whiteGames.length,
       totalBlackGames: blackGames.length,
+      totalWhiteWins: totalWhiteWins,
+      totalBlackWins: totalBlackWins,
+      totalWhiteDraws: totalWhiteDraws,
+      totalBlackDraws: totalBlackDraws,
+      totalWhiteLosses: totalWhiteLosses,
+      totalBlackLosses: totalBlackLosses,
       meaningfulWhite,
       meaningfulBlack,
       meaningfulCombined

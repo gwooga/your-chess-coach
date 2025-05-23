@@ -276,23 +276,52 @@ const fetchUserAnalysis = async (userInfo: UserInfo, timeRange: TimeRange): Prom
         
         const variantUsername = username + variant; // Create variant-specific username seed
         const multiplier = variant === 'all' ? 1 : 0.5;
+        
+        // Calculate total games for this variant
+        const variantTotalGamesWhite = Math.floor(totalGamesWhite * multiplier);
+        const variantTotalGamesBlack = Math.floor(totalGamesBlack * multiplier);
+        
+        // Calculate wins, draws, losses
+        const winRateWhite = 0.45 + ((variantSeed % 30) / 100); // 45-75% win rate
+        const drawRateWhite = 0.1 + ((variantSeed % 15) / 100); // 10-25% draw rate
+        const lossRateWhite = 1 - winRateWhite - drawRateWhite;
+        
+        const winRateBlack = 0.40 + ((variantSeed % 25) / 100); // 40-65% win rate
+        const drawRateBlack = 0.1 + ((variantSeed % 15) / 100); // 10-25% draw rate
+        const lossRateBlack = 1 - winRateBlack - drawRateBlack;
+        
+        // Calculate total wins, draws, losses
+        const totalWhiteWins = Math.floor(variantTotalGamesWhite * winRateWhite);
+        const totalWhiteDraws = Math.floor(variantTotalGamesWhite * drawRateWhite);
+        const totalWhiteLosses = variantTotalGamesWhite - totalWhiteWins - totalWhiteDraws;
+        
+        const totalBlackWins = Math.floor(variantTotalGamesBlack * winRateBlack);
+        const totalBlackDraws = Math.floor(variantTotalGamesBlack * drawRateBlack);
+        const totalBlackLosses = variantTotalGamesBlack - totalBlackWins - totalBlackDraws;
+        
         return {
-          white2: generateOpeningData(variantUsername, Math.floor(totalGamesWhite * multiplier), 'white', 3),
-          black2: generateOpeningData(variantUsername, Math.floor(totalGamesBlack * multiplier), 'black', 3),
-          white3: generateOpeningData(variantUsername, Math.floor(totalGamesWhite * multiplier), 'white', 3),
-          black3: generateOpeningData(variantUsername, Math.floor(totalGamesBlack * multiplier), 'black', 3),
-          white4: generateOpeningData(variantUsername, Math.floor(totalGamesWhite * multiplier), 'white', 3),
-          black4: generateOpeningData(variantUsername, Math.floor(totalGamesBlack * multiplier), 'black', 3),
-          white5: generateOpeningData(variantUsername, Math.floor(totalGamesWhite * multiplier), 'white', 5),
-          black5: generateOpeningData(variantUsername, Math.floor(totalGamesBlack * multiplier), 'black', 5),
-          white6: generateOpeningData(variantUsername, Math.floor(totalGamesWhite * multiplier), 'white', 5),
-          black6: generateOpeningData(variantUsername, Math.floor(totalGamesBlack * multiplier), 'black', 5),
-          white7: generateOpeningData(variantUsername, Math.floor(totalGamesWhite * multiplier), 'white', 7),
-          black7: generateOpeningData(variantUsername, Math.floor(totalGamesBlack * multiplier), 'black', 7),
-          white8: generateOpeningData(variantUsername, Math.floor(totalGamesWhite * multiplier), 'white', 7),
-          black8: generateOpeningData(variantUsername, Math.floor(totalGamesBlack * multiplier), 'black', 7),
-          totalWhiteGames: Math.floor(totalGamesWhite * multiplier),
-          totalBlackGames: Math.floor(totalGamesBlack * multiplier)
+          white2: generateOpeningData(variantUsername, variantTotalGamesWhite, 'white', 3),
+          black2: generateOpeningData(variantUsername, variantTotalGamesBlack, 'black', 3),
+          white3: generateOpeningData(variantUsername, variantTotalGamesWhite, 'white', 3),
+          black3: generateOpeningData(variantUsername, variantTotalGamesBlack, 'black', 3),
+          white4: generateOpeningData(variantUsername, variantTotalGamesWhite, 'white', 3),
+          black4: generateOpeningData(variantUsername, variantTotalGamesBlack, 'black', 3),
+          white5: generateOpeningData(variantUsername, variantTotalGamesWhite, 'white', 5),
+          black5: generateOpeningData(variantUsername, variantTotalGamesBlack, 'black', 5),
+          white6: generateOpeningData(variantUsername, variantTotalGamesWhite, 'white', 5),
+          black6: generateOpeningData(variantUsername, variantTotalGamesBlack, 'black', 5),
+          white7: generateOpeningData(variantUsername, variantTotalGamesWhite, 'white', 7),
+          black7: generateOpeningData(variantUsername, variantTotalGamesBlack, 'black', 7),
+          white8: generateOpeningData(variantUsername, variantTotalGamesWhite, 'white', 7),
+          black8: generateOpeningData(variantUsername, variantTotalGamesBlack, 'black', 7),
+          totalWhiteGames: variantTotalGamesWhite,
+          totalBlackGames: variantTotalGamesBlack,
+          totalWhiteWins: totalWhiteWins,
+          totalBlackWins: totalBlackWins,
+          totalWhiteDraws: totalWhiteDraws,
+          totalBlackDraws: totalBlackDraws,
+          totalWhiteLosses: totalWhiteLosses,
+          totalBlackLosses: totalBlackLosses
         };
       };
       
