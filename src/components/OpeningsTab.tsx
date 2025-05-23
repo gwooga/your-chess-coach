@@ -10,14 +10,17 @@ import { LightbulbIcon } from 'lucide-react';
 import MeaningfulOpeningsTable from './MeaningfulOpeningsTable';
 import { shouldDisplayTable } from "@/components/ui/table";
 import OpeningSummary from './OpeningSummary';
+import CoachSummary from './coach/CoachSummary';
+import CoachOpenings from './coach/CoachOpenings';
 
 interface OpeningsTabProps {
   data: OpeningsTableData;
   variant: ChessVariant;
   ratings: Rating;
+  analysis?: any;  // User analysis data for coach summary
 }
 
-const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings }) => {
+const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings, analysis }) => {
   const [activeSubTab, setActiveSubTab] = useState<string>("summary");
   
   // Create combined meaningful openings data
@@ -39,15 +42,48 @@ const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings }) => 
   
   const totalGames = data.totalWhiteGames + data.totalBlackGames;
   
+  // Stats for displaying at the top
+  const winRate = Math.round((data.totalWhiteWins + data.totalBlackWins) / totalGames * 100);
+  const drawRate = Math.round((data.totalWhiteDraws + data.totalBlackDraws) / totalGames * 100);
+  const lossRate = Math.round((data.totalWhiteLosses + data.totalBlackLosses) / totalGames * 100);
+  
+  // Find top openings for coach summary
+  const topWhiteOpening = data.meaningfulWhite && data.meaningfulWhite.length > 0 ? 
+    data.meaningfulWhite.sort((a, b) => b.winsPercentage! - a.winsPercentage!)[0] : null;
+    
+  const topBlackOpening = data.meaningfulBlack && data.meaningfulBlack.length > 0 ? 
+    data.meaningfulBlack.sort((a, b) => b.winsPercentage! - a.winsPercentage!)[0] : null;
+  
   return (
     <div className="space-y-6">
       <div className="mb-6">
         <RatingDisplay ratings={ratings} variant={variant === 'all' ? undefined : variant} />
+        
+        {/* Stats display */}
+        <div className="grid grid-cols-4 gap-4 mt-6">
+          <div className="bg-white rounded-lg p-4 shadow-sm border">
+            <div className="text-sm text-gray-500">Games Analyzed</div>
+            <div className="text-2xl font-bold">{totalGames}</div>
+          </div>
+          <div className="bg-white rounded-lg p-4 shadow-sm border">
+            <div className="text-sm text-gray-500">Win Rate</div>
+            <div className="text-2xl font-bold text-chess-win">{winRate}%</div>
+          </div>
+          <div className="bg-white rounded-lg p-4 shadow-sm border">
+            <div className="text-sm text-gray-500">Draw Rate</div>
+            <div className="text-2xl font-bold text-chess-draw">{drawRate}%</div>
+          </div>
+          <div className="bg-white rounded-lg p-4 shadow-sm border">
+            <div className="text-sm text-gray-500">Loss Rate</div>
+            <div className="text-2xl font-bold text-chess-loss">{lossRate}%</div>
+          </div>
+        </div>
       </div>
       
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
-        <TabsList className="grid grid-cols-3 mb-8">
+        <TabsList className="grid grid-cols-4 mb-8">
           <TabsTrigger value="summary">Summary</TabsTrigger>
+          <TabsTrigger value="coach-summary">Coach's Summary</TabsTrigger>
           <TabsTrigger value="highlights">Highlights</TabsTrigger>
           <TabsTrigger value="full-breakdown">Full Breakdown</TabsTrigger>
         </TabsList>
@@ -55,6 +91,31 @@ const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings }) => 
         {/* Summary Tab Content */}
         <TabsContent value="summary" className="mt-0">
           <OpeningSummary data={data} variant={variant} />
+        </TabsContent>
+        
+        {/* Coach's Summary Tab Content */}
+        <TabsContent value="coach-summary" className="mt-0">
+          {analysis && (
+            <div className="space-y-6">
+              <CoachSummary 
+                analysis={analysis} 
+                topWhiteOpening={topWhiteOpening}
+                topBlackOpening={topBlackOpening}
+                winRate={winRate}
+                totalGames={totalGames}
+              />
+              <CoachOpenings
+                openings={data}
+                whiteOpening={topWhiteOpening}
+                blackOpening={topBlackOpening}
+              />
+            </div>
+          )}
+          {!analysis && (
+            <div className="text-center py-8 text-gray-500">
+              Coach's analysis data not available for this time period.
+            </div>
+          )}
         </TabsContent>
         
         {/* Highlights Tab Content */}

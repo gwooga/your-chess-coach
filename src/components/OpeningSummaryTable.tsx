@@ -49,7 +49,12 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
   // Get display name for the table
   const getTableTitle = () => {
     const colorDisplay = rootLine.color === 'white' ? 'White' : 'Black';
-    return `${formatOpeningName(rootLine.name)}: '${rootLine.sequence}' (${colorDisplay})`;
+    const colorClass = rootLine.color === 'white' ? 'text-amber-700' : 'text-blue-700';
+    return (
+      <span>
+        {formatOpeningName(rootLine.name)}: '{rootLine.sequence}' (<span className={colorClass}>{colorDisplay}</span>)
+      </span>
+    );
   };
 
   return (
@@ -71,30 +76,30 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
             <TableBody>
               {/* Root line */}
               <TableRow 
-                className={`font-medium bg-gray-100 hover:bg-gray-200 ${getColorClass(rootLine.color)}`}
+                className={`font-medium hover:bg-gray-200 border-b border-gray-300 ${getColorClass(rootLine.color)}`}
                 onMouseEnter={() => setSelectedLine(rootLine)}
               >
                 <TableCell>{formatOpeningName(rootLine.name)}</TableCell>
                 <TableCell>{rootLine.sequence}</TableCell>
                 <TableCell>{formatGamesCount(rootLine.games, totalGames)}</TableCell>
-                <TableCell className="text-chess-win">{formatPercentage(rootLine.winsPercentage)}</TableCell>
+                <TableCell className="text-chess-win font-medium">{formatPercentage(rootLine.winsPercentage)}</TableCell>
                 <TableCell className="text-chess-draw">{formatPercentage(rootLine.drawsPercentage)}</TableCell>
-                <TableCell className="text-chess-loss">{formatPercentage(rootLine.lossesPercentage)}</TableCell>
+                <TableCell className="text-chess-loss font-medium">{formatPercentage(rootLine.lossesPercentage)}</TableCell>
               </TableRow>
               
               {/* Child lines */}
               {childLines.map((line, index) => (
                 <TableRow 
                   key={index} 
-                  className={getColorClass(line.color)}
+                  className={`hover:bg-gray-200 ${getColorClass(line.color)}`}
                   onMouseEnter={() => setSelectedLine(line)}
                 >
                   <TableCell>{formatOpeningName(line.name)}</TableCell>
                   <TableCell>{line.sequence}</TableCell>
                   <TableCell>{formatGamesCount(line.games, totalGames)}</TableCell>
-                  <TableCell className="text-chess-win">{formatPercentage(line.winsPercentage)}</TableCell>
+                  <TableCell className="text-chess-win font-medium">{formatPercentage(line.winsPercentage)}</TableCell>
                   <TableCell className="text-chess-draw">{formatPercentage(line.drawsPercentage)}</TableCell>
-                  <TableCell className="text-chess-loss">{formatPercentage(line.lossesPercentage)}</TableCell>
+                  <TableCell className="text-chess-loss font-medium">{formatPercentage(line.lossesPercentage)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -103,7 +108,7 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
         
         {/* Coach's notes section */}
         <div className="mt-4 p-4 bg-white border rounded-lg">
-          <h4 className="text-md font-semibold mb-2">Coach's notes</h4>
+          <h4 className="text-md font-semibold mb-2">Coach says</h4>
           <div className="space-y-2 text-gray-700">
             <p>
               {rootLine.color === 'white' 
