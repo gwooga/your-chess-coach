@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { OpeningsTableData, OpeningData } from '@/utils/types';
+import { OpeningsTableData } from '@/utils/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckCircle } from "lucide-react";
 import MeaningfulOpeningsTable from '../MeaningfulOpeningsTable';
@@ -12,17 +12,9 @@ interface CoachOpeningsProps {
   variantData: OpeningsTableData;
   totalGames: number;
   variant: string;
-  whiteOpening?: OpeningData | null;
-  blackOpening?: OpeningData | null;
 }
 
-const CoachOpenings: React.FC<CoachOpeningsProps> = ({ 
-  variantData, 
-  totalGames, 
-  variant,
-  whiteOpening,
-  blackOpening
-}) => {
+const CoachOpenings: React.FC<CoachOpeningsProps> = ({ variantData, totalGames, variant }) => {
   return (
     <>
       <h2 className="text-2xl font-bold mb-4">Your Opening Repertoire</h2>

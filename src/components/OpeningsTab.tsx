@@ -10,17 +10,14 @@ import { LightbulbIcon } from 'lucide-react';
 import MeaningfulOpeningsTable from './MeaningfulOpeningsTable';
 import { shouldDisplayTable } from "@/components/ui/table";
 import OpeningSummary from './OpeningSummary';
-import CoachSummary from './coach/CoachSummary';
-import CoachOpenings from './coach/CoachOpenings';
 
 interface OpeningsTabProps {
   data: OpeningsTableData;
   variant: ChessVariant;
   ratings: Rating;
-  analysis?: any;  // User analysis data for coach summary
 }
 
-const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings, analysis }) => {
+const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings }) => {
   const [activeSubTab, setActiveSubTab] = useState<string>("summary");
   
   // Create combined meaningful openings data
@@ -42,74 +39,15 @@ const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings, analy
   
   const totalGames = data.totalWhiteGames + data.totalBlackGames;
   
-  // Calculate these values if they don't exist in the data object
-  // This serves as a fallback if the backend hasn't provided these values yet
-  let winRate = 0, drawRate = 0, lossRate = 0;
-  
-  if (data.totalWhiteWins !== undefined && data.totalBlackWins !== undefined) {
-    winRate = Math.round((data.totalWhiteWins + data.totalBlackWins) / totalGames * 100);
-  } else {
-    // Calculate from white3 and black3 data as fallback
-    const totalWins = data.white3?.reduce((sum, o) => sum + o.wins, 0) || 0 +
-                      data.black3?.reduce((sum, o) => sum + o.wins, 0) || 0;
-    winRate = Math.round((totalWins / totalGames) * 100) || 0;
-  }
-  
-  if (data.totalWhiteDraws !== undefined && data.totalBlackDraws !== undefined) {
-    drawRate = Math.round((data.totalWhiteDraws + data.totalBlackDraws) / totalGames * 100);
-  } else {
-    // Calculate from white3 and black3 data as fallback
-    const totalDraws = data.white3?.reduce((sum, o) => sum + o.draws, 0) || 0 +
-                       data.black3?.reduce((sum, o) => sum + o.draws, 0) || 0;
-    drawRate = Math.round((totalDraws / totalGames) * 100) || 0;
-  }
-  
-  if (data.totalWhiteLosses !== undefined && data.totalBlackLosses !== undefined) {
-    lossRate = Math.round((data.totalWhiteLosses + data.totalBlackLosses) / totalGames * 100);
-  } else {
-    // Calculate from white3 and black3 data as fallback
-    const totalLosses = data.white3?.reduce((sum, o) => sum + o.losses, 0) || 0 +
-                        data.black3?.reduce((sum, o) => sum + o.losses, 0) || 0;
-    lossRate = Math.round((totalLosses / totalGames) * 100) || 0;
-  }
-  
-  // Find top openings for coach summary
-  const topWhiteOpening = data.meaningfulWhite && data.meaningfulWhite.length > 0 ? 
-    data.meaningfulWhite.sort((a, b) => b.winsPercentage! - a.winsPercentage!)[0] : null;
-    
-  const topBlackOpening = data.meaningfulBlack && data.meaningfulBlack.length > 0 ? 
-    data.meaningfulBlack.sort((a, b) => b.winsPercentage! - a.winsPercentage!)[0] : null;
-  
   return (
     <div className="space-y-6">
       <div className="mb-6">
         <RatingDisplay ratings={ratings} variant={variant === 'all' ? undefined : variant} />
-        
-        {/* Stats display */}
-        <div className="grid grid-cols-4 gap-4 mt-6">
-          <div className="bg-white rounded-lg p-4 shadow-sm border">
-            <div className="text-sm text-gray-500">Games Analyzed</div>
-            <div className="text-2xl font-bold">{totalGames}</div>
-          </div>
-          <div className="bg-white rounded-lg p-4 shadow-sm border">
-            <div className="text-sm text-gray-500">Win Rate</div>
-            <div className="text-2xl font-bold text-chess-win">{winRate}%</div>
-          </div>
-          <div className="bg-white rounded-lg p-4 shadow-sm border">
-            <div className="text-sm text-gray-500">Draw Rate</div>
-            <div className="text-2xl font-bold text-chess-draw">{drawRate}%</div>
-          </div>
-          <div className="bg-white rounded-lg p-4 shadow-sm border">
-            <div className="text-sm text-gray-500">Loss Rate</div>
-            <div className="text-2xl font-bold text-chess-loss">{lossRate}%</div>
-          </div>
-        </div>
       </div>
       
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
-        <TabsList className="grid grid-cols-4 mb-8">
+        <TabsList className="grid grid-cols-3 mb-8">
           <TabsTrigger value="summary">Summary</TabsTrigger>
-          <TabsTrigger value="coach-summary">Coach's Summary</TabsTrigger>
           <TabsTrigger value="highlights">Highlights</TabsTrigger>
           <TabsTrigger value="full-breakdown">Full Breakdown</TabsTrigger>
         </TabsList>
@@ -117,33 +55,6 @@ const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings, analy
         {/* Summary Tab Content */}
         <TabsContent value="summary" className="mt-0">
           <OpeningSummary data={data} variant={variant} />
-        </TabsContent>
-        
-        {/* Coach's Summary Tab Content */}
-        <TabsContent value="coach-summary" className="mt-0">
-          {analysis && (
-            <div className="space-y-6">
-              <CoachSummary 
-                analysis={analysis} 
-                topWhiteOpening={topWhiteOpening}
-                topBlackOpening={topBlackOpening}
-                winRate={winRate}
-                totalGames={totalGames}
-              />
-              <CoachOpenings
-                variantData={data}
-                totalGames={totalGames}
-                variant={variant}
-                whiteOpening={topWhiteOpening}
-                blackOpening={topBlackOpening}
-              />
-            </div>
-          )}
-          {!analysis && (
-            <div className="text-center py-8 text-gray-500">
-              Coach's analysis data not available for this time period.
-            </div>
-          )}
         </TabsContent>
         
         {/* Highlights Tab Content */}

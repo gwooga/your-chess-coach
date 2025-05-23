@@ -52,12 +52,6 @@ export interface OpeningsTableData {
   black10?: OpeningData[];
   totalWhiteGames: number;
   totalBlackGames: number;
-  totalWhiteWins: number;
-  totalBlackWins: number;
-  totalWhiteDraws: number;
-  totalBlackDraws: number;
-  totalWhiteLosses: number;
-  totalBlackLosses: number;
   meaningfulWhite?: OpeningData[];
   meaningfulBlack?: OpeningData[];
   meaningfulCombined?: OpeningData[]; // New field for combined meaningful openings
