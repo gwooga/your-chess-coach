@@ -42,10 +42,36 @@ const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings, analy
   
   const totalGames = data.totalWhiteGames + data.totalBlackGames;
   
-  // Stats for displaying at the top
-  const winRate = Math.round((data.totalWhiteWins + data.totalBlackWins) / totalGames * 100);
-  const drawRate = Math.round((data.totalWhiteDraws + data.totalBlackDraws) / totalGames * 100);
-  const lossRate = Math.round((data.totalWhiteLosses + data.totalBlackLosses) / totalGames * 100);
+  // Calculate these values if they don't exist in the data object
+  // This serves as a fallback if the backend hasn't provided these values yet
+  let winRate = 0, drawRate = 0, lossRate = 0;
+  
+  if (data.totalWhiteWins !== undefined && data.totalBlackWins !== undefined) {
+    winRate = Math.round((data.totalWhiteWins + data.totalBlackWins) / totalGames * 100);
+  } else {
+    // Calculate from white3 and black3 data as fallback
+    const totalWins = data.white3?.reduce((sum, o) => sum + o.wins, 0) || 0 +
+                      data.black3?.reduce((sum, o) => sum + o.wins, 0) || 0;
+    winRate = Math.round((totalWins / totalGames) * 100) || 0;
+  }
+  
+  if (data.totalWhiteDraws !== undefined && data.totalBlackDraws !== undefined) {
+    drawRate = Math.round((data.totalWhiteDraws + data.totalBlackDraws) / totalGames * 100);
+  } else {
+    // Calculate from white3 and black3 data as fallback
+    const totalDraws = data.white3?.reduce((sum, o) => sum + o.draws, 0) || 0 +
+                       data.black3?.reduce((sum, o) => sum + o.draws, 0) || 0;
+    drawRate = Math.round((totalDraws / totalGames) * 100) || 0;
+  }
+  
+  if (data.totalWhiteLosses !== undefined && data.totalBlackLosses !== undefined) {
+    lossRate = Math.round((data.totalWhiteLosses + data.totalBlackLosses) / totalGames * 100);
+  } else {
+    // Calculate from white3 and black3 data as fallback
+    const totalLosses = data.white3?.reduce((sum, o) => sum + o.losses, 0) || 0 +
+                        data.black3?.reduce((sum, o) => sum + o.losses, 0) || 0;
+    lossRate = Math.round((totalLosses / totalGames) * 100) || 0;
+  }
   
   // Find top openings for coach summary
   const topWhiteOpening = data.meaningfulWhite && data.meaningfulWhite.length > 0 ? 
@@ -105,7 +131,9 @@ const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings, analy
                 totalGames={totalGames}
               />
               <CoachOpenings
-                openings={data}
+                variantData={data}
+                totalGames={totalGames}
+                variant={variant}
                 whiteOpening={topWhiteOpening}
                 blackOpening={topBlackOpening}
               />
