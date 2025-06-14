@@ -20,51 +20,84 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant }) => {
   // Get variant-specific data
   const variantData = analysis.openings[variant];
   
-  // Calculate overall statistics
-  const totalGames = analysis.dayPerformance.reduce((sum, day) => sum + day.games, 0);
-  const totalWins = analysis.dayPerformance.reduce((sum, day) => sum + day.wins, 0);
-  const totalDraws = analysis.dayPerformance.reduce((sum, day) => sum + day.draws, 0);
-  const totalLosses = analysis.dayPerformance.reduce((sum, day) => sum + day.losses, 0);
+  // Calculate statistics for the current variant
+  const calculateVariantStats = (variant: ChessVariant) => {
+    if (variant === 'all') {
+      // For 'all', use the overall day performance data
+      const totalGames = analysis.dayPerformance.reduce((sum, day) => sum + day.games, 0);
+      const totalWins = analysis.dayPerformance.reduce((sum, day) => sum + day.wins, 0);
+      const totalDraws = analysis.dayPerformance.reduce((sum, day) => sum + day.draws, 0);
+      const totalLosses = analysis.dayPerformance.reduce((sum, day) => sum + day.losses, 0);
+      
+      return { totalGames, totalWins, totalDraws, totalLosses };
+    } else {
+      // For specific variants, use the opening data totals
+      const variantOpenings = analysis.openings[variant];
+      const totalGames = variantOpenings.totalWhiteGames + variantOpenings.totalBlackGames;
+      
+      // Calculate wins, draws, losses from opening data
+      const allOpenings = [
+        ...variantOpenings.white2,
+        ...variantOpenings.black2,
+        ...variantOpenings.white3,
+        ...variantOpenings.black3,
+        ...variantOpenings.white4,
+        ...variantOpenings.black4,
+        ...variantOpenings.white5,
+        ...variantOpenings.black5
+      ];
+      
+      const totalWins = allOpenings.reduce((sum, opening) => sum + opening.wins, 0);
+      const totalDraws = allOpenings.reduce((sum, opening) => sum + opening.draws, 0);
+      const totalLosses = allOpenings.reduce((sum, opening) => sum + opening.losses, 0);
+      
+      return { totalGames, totalWins, totalDraws, totalLosses };
+    }
+  };
+  
+  const { totalGames, totalWins, totalDraws, totalLosses } = calculateVariantStats(variant);
   
   const winRate = totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0;
   const drawRate = totalGames > 0 ? Math.round((totalDraws / totalGames) * 100) : 0;
   const lossRate = totalGames > 0 ? Math.round((totalLosses / totalGames) * 100) : 0;
   
+  // Statistics Cards Component
+  const StatisticsCards = () => (
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <StatCard 
+        icon="clock" 
+        color="blue" 
+        title="Games Analyzed" 
+        value={totalGames.toString()} 
+      />
+      
+      <StatCard 
+        icon="trophy" 
+        color="green" 
+        title="Win Rate" 
+        value={`${winRate}%`} 
+      />
+      
+      <StatCard 
+        icon="trend-up" 
+        color="yellow" 
+        title="Draw Rate" 
+        value={`${drawRate}%`} 
+      />
+      
+      <StatCard 
+        icon="trend-down" 
+        color="red" 
+        title="Loss Rate" 
+        value={`${lossRate}%`} 
+      />
+    </div>
+  );
+  
   return (
     <div className="space-y-8">
       <div className="mb-6">
         <RatingDisplay ratings={analysis.ratings} variant={variant === 'all' ? undefined : variant} />
-      </div>
-      
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatCard 
-          icon="clock" 
-          color="blue" 
-          title="Games Analyzed" 
-          value={totalGames.toString()} 
-        />
-        
-        <StatCard 
-          icon="trophy" 
-          color="green" 
-          title="Win Rate" 
-          value={`${winRate}%`} 
-        />
-        
-        <StatCard 
-          icon="trend-up" 
-          color="yellow" 
-          title="Draw Rate" 
-          value={`${drawRate}%`} 
-        />
-        
-        <StatCard 
-          icon="trend-down" 
-          color="red" 
-          title="Loss Rate" 
-          value={`${lossRate}%`} 
-        />
       </div>
       
       {/* Coach Tab Navigation */}
@@ -78,6 +111,8 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant }) => {
           
           {/* Coach's Summary Content */}
           <TabsContent value="summary" className="mt-6">
+            <StatisticsCards />
+            
             <CoachSummary 
               analysis={analysis} 
               topWhiteOpening={variantData.meaningfulWhite[0] || null}
@@ -92,6 +127,8 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant }) => {
           
           {/* Performance Content */}
           <TabsContent value="performance" className="mt-6 space-y-8">
+            <StatisticsCards />
+            
             <CoachPerformance 
               analysis={analysis}
             />
@@ -99,6 +136,8 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant }) => {
           
           {/* Openings Analysis Tab */}
           <TabsContent value="openings" className="mt-6 space-y-8">
+            <StatisticsCards />
+            
             <CoachOpenings 
               variantData={variantData}
               totalGames={variantData.totalWhiteGames + variantData.totalBlackGames}
