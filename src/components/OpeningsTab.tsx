@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import OpeningsTable from './OpeningsTable';
 import RatingDisplay from './RatingDisplay';
-import { OpeningsTableData, ChessVariant, Rating } from '@/utils/types';
+import { OpeningsTableData, ChessVariant, Rating, UserAnalysis } from '@/utils/types';
 import OpeningInsights from './OpeningInsights';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LightbulbIcon } from 'lucide-react';
@@ -15,9 +15,10 @@ interface OpeningsTabProps {
   data: OpeningsTableData;
   variant: ChessVariant;
   ratings: Rating;
+  analysis?: UserAnalysis; // Add analysis prop
 }
 
-const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings }) => {
+const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings, analysis }) => {
   const [activeSubTab, setActiveSubTab] = useState<string>("summary");
   
   // Create combined meaningful openings data
@@ -42,7 +43,11 @@ const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings }) => 
   return (
     <div className="space-y-6">
       <div className="mb-6">
-        <RatingDisplay ratings={ratings} variant={variant === 'all' ? undefined : variant} />
+        <RatingDisplay 
+          ratings={ratings} 
+          variant={variant === 'all' ? undefined : variant}
+          analysis={analysis}
+        />
       </div>
       
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
