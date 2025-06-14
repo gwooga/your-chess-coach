@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import RatingDisplay from './RatingDisplay';
@@ -33,6 +34,37 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant }) => {
     <div className="space-y-8">
       <div className="mb-6">
         <RatingDisplay ratings={analysis.ratings} variant={variant === 'all' ? undefined : variant} />
+      </div>
+      
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <StatCard 
+          icon="clock" 
+          color="blue" 
+          title="Games Analyzed" 
+          value={totalGames.toString()} 
+        />
+        
+        <StatCard 
+          icon="trophy" 
+          color="green" 
+          title="Win Rate" 
+          value={`${winRate}%`} 
+        />
+        
+        <StatCard 
+          icon="trend-up" 
+          color="yellow" 
+          title="Draw Rate" 
+          value={`${drawRate}%`} 
+        />
+        
+        <StatCard 
+          icon="trend-down" 
+          color="red" 
+          title="Loss Rate" 
+          value={`${lossRate}%`} 
+        />
       </div>
       
       {/* Coach Tab Navigation */}

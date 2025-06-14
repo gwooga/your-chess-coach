@@ -10,7 +10,6 @@ import { LightbulbIcon } from 'lucide-react';
 import MeaningfulOpeningsTable from './MeaningfulOpeningsTable';
 import { shouldDisplayTable } from "@/components/ui/table";
 import OpeningSummary from './OpeningSummary';
-import StatCard from './StatCard';
 
 interface OpeningsTabProps {
   data: OpeningsTableData;
@@ -38,51 +37,12 @@ const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings }) => 
     return whiteHighest >= 1 || blackHighest >= 1;
   };
   
-  // Calculate statistics
   const totalGames = data.totalWhiteGames + data.totalBlackGames;
-  const totalWins = (data.totalWhiteWins || 0) + (data.totalBlackWins || 0);
-  const totalDraws = (data.totalWhiteDraws || 0) + (data.totalBlackDraws || 0);
-  const totalLosses = (data.totalWhiteLosses || 0) + (data.totalBlackLosses || 0);
-  
-  const winRate = totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0;
-  const drawRate = totalGames > 0 ? Math.round((totalDraws / totalGames) * 100) : 0;
-  const lossRate = totalGames > 0 ? Math.round((totalLosses / totalGames) * 100) : 0;
   
   return (
     <div className="space-y-6">
       <div className="mb-6">
         <RatingDisplay ratings={ratings} variant={variant === 'all' ? undefined : variant} />
-      </div>
-      
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatCard 
-          icon="clock" 
-          color="blue" 
-          title="Games Analyzed" 
-          value={totalGames.toString()} 
-        />
-        
-        <StatCard 
-          icon="trophy" 
-          color="green" 
-          title="Win Rate" 
-          value={`${winRate}%`} 
-        />
-        
-        <StatCard 
-          icon="trend-up" 
-          color="yellow" 
-          title="Draw Rate" 
-          value={`${drawRate}%`} 
-        />
-        
-        <StatCard 
-          icon="trend-down" 
-          color="red" 
-          title="Loss Rate" 
-          value={`${lossRate}%`} 
-        />
       </div>
       
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
