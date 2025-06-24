@@ -44,7 +44,15 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
   // Get display name for the table
   const getTableTitle = () => {
     const colorDisplay = rootLine.color === 'white' ? 'White' : 'Black';
-    return `${formatOpeningName(rootLine.name)}: '${rootLine.sequence}' (${colorDisplay})`;
+    const colorStyle = rootLine.color === 'white' ? { color: 'blue' } : { color: 'orange' };
+    
+    return (
+      <>
+        {formatOpeningName(rootLine.name)}: '{rootLine.sequence}' (
+        <span style={colorStyle}>{colorDisplay}</span>
+        )
+      </>
+    );
   };
 
   return (
