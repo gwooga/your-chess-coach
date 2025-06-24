@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import OpeningsTable from './OpeningsTable';
@@ -51,48 +50,14 @@ const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings, analy
       </div>
       
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
-        <TabsList className="grid grid-cols-3 mb-8">
+        <TabsList className="grid grid-cols-2 mb-8">
           <TabsTrigger value="summary">Summary</TabsTrigger>
-          <TabsTrigger value="highlights">Highlights</TabsTrigger>
           <TabsTrigger value="full-breakdown">Full Breakdown</TabsTrigger>
         </TabsList>
         
         {/* Summary Tab Content */}
         <TabsContent value="summary" className="mt-0">
           <OpeningSummary data={data} variant={variant} />
-        </TabsContent>
-        
-        {/* Highlights Tab Content */}
-        <TabsContent value="highlights" className="mt-0">
-          <div className="space-y-10">
-            <div>
-              <h2 className="text-xl font-bold mb-4">Your Top 20 Most Meaningful Openings</h2>
-              <div>
-                <MeaningfulOpeningsTable 
-                  data={combinedMeaningful} 
-                  totalGames={totalGames}
-                />
-              </div>
-            </div>
-            
-            {/* Insights Card */}
-            {data.insights && data.insights.length > 0 && (
-              <Card className="border-l-4 border-l-chess-purple">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center gap-2">
-                    <LightbulbIcon className="h-5 w-5 text-chess-purple" />
-                    <CardTitle>Opening Insights</CardTitle>
-                  </div>
-                  <CardDescription>
-                    Key observations based on your opening repertoire
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <OpeningInsights insights={data.insights} />
-                </CardContent>
-              </Card>
-            )}
-          </div>
         </TabsContent>
         
         {/* Full Breakdown Tab Content */}
