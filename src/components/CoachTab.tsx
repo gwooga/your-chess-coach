@@ -7,7 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ChessAdviser from './ChessAdviser';
 import CoachSummary from './coach/CoachSummary';
 import CoachPerformance from './coach/CoachPerformance';
-import CoachOpenings from './coach/CoachOpenings';
 
 interface CoachTabProps {
   analysis: UserAnalysis;
@@ -33,10 +32,9 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant }) => {
       {/* Coach Tab Navigation */}
       <div className="mb-6">
         <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="summary">Coach's Summary</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
-            <TabsTrigger value="openings">Opening Analysis</TabsTrigger>
           </TabsList>
           
           {/* Coach's Summary Content */}
@@ -57,15 +55,6 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant }) => {
           <TabsContent value="performance" className="mt-6 space-y-8">
             <CoachPerformance 
               analysis={analysis}
-            />
-          </TabsContent>
-          
-          {/* Openings Analysis Tab */}
-          <TabsContent value="openings" className="mt-6 space-y-8">
-            <CoachOpenings 
-              variantData={variantData}
-              totalGames={variantData.totalWhiteGames + variantData.totalBlackGames}
-              variant={variant}
             />
           </TabsContent>
         </Tabs>
