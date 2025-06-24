@@ -103,7 +103,7 @@ const OpeningsTable: React.FC<OpeningsTableProps> = ({ data, title, totalGames }
         className="flex justify-between items-center p-3 bg-gray-50 cursor-pointer"
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
-        <h3 className="text-lg font-semibold">{title} <span className="text-sm font-normal text-gray-500">({totalGames} games)</span></h3>
+        <h3 className="text-lg font-semibold">{title} <span className="text-sm font-normal" style={{color: 'rgb(75 85 99)'}}>({totalGames} games)</span></h3>
         <Button variant="ghost" size="icon">
           {isCollapsed ? <ArrowDown className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}
         </Button>
@@ -126,13 +126,13 @@ const OpeningsTable: React.FC<OpeningsTableProps> = ({ data, title, totalGames }
                   </TooltipContent>
                 </Tooltip>
               </TableHead>
-              <TableHead className="cursor-pointer text-green-600" onClick={() => handleSort('winsPercentage')}>
+              <TableHead className="cursor-pointer" style={{color: 'rgb(22 163 74)'}} onClick={() => handleSort('winsPercentage')}>
                 Wins (%) {getSortIcon('winsPercentage')}
               </TableHead>
-              <TableHead className="cursor-pointer text-gray-600" onClick={() => handleSort('drawsPercentage')}>
+              <TableHead className="cursor-pointer" style={{color: 'rgb(75 85 99)'}} onClick={() => handleSort('drawsPercentage')}>
                 Draws (%) {getSortIcon('drawsPercentage')}
               </TableHead>
-              <TableHead className="cursor-pointer text-red-600" onClick={() => handleSort('lossesPercentage')}>
+              <TableHead className="cursor-pointer" style={{color: 'rgb(220 38 38)'}} onClick={() => handleSort('lossesPercentage')}>
                 Losses (%) {getSortIcon('lossesPercentage')}
               </TableHead>
               <TableHead>Board</TableHead>
@@ -144,9 +144,9 @@ const OpeningsTable: React.FC<OpeningsTableProps> = ({ data, title, totalGames }
                 <TableCell className="font-medium">{opening.name || "Unnamed Opening"}</TableCell>
                 <TableCell className="font-mono text-xs">{formatSequence(opening.sequence)}</TableCell>
                 <TableCell>{opening.games} ({opening.gamesPercentage}%)</TableCell>
-                <TableCell className="text-green-600 font-medium">{opening.winsPercentage}%</TableCell>
-                <TableCell className="text-gray-600">{opening.drawsPercentage}%</TableCell>
-                <TableCell className="text-red-600 font-medium">{opening.lossesPercentage}%</TableCell>
+                <TableCell className="font-medium" style={{color: 'rgb(22 163 74)'}}>{opening.winsPercentage}%</TableCell>
+                <TableCell style={{color: 'rgb(75 85 99)'}}>{opening.drawsPercentage}%</TableCell>
+                <TableCell className="font-medium" style={{color: 'rgb(220 38 38)'}}>{opening.lossesPercentage}%</TableCell>
                 <TableCell>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -173,7 +173,7 @@ const OpeningsTable: React.FC<OpeningsTableProps> = ({ data, title, totalGames }
             ))}
             {sortedData.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-4 text-gray-500">
+                <TableCell colSpan={7} className="text-center py-4" style={{color: 'rgb(75 85 99)'}}>
                   No data available for this opening type
                 </TableCell>
               </TableRow>
