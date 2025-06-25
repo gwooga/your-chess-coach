@@ -23,49 +23,29 @@ export async function fetchLichessGames(
   maxGames = 300,
   perfType?: 'bullet' | 'blitz' | 'rapid' | 'classical'
 ) {
-  // build URL safely
   const url = new URL(`${BASE_URL}/games/user/${username}`);
   if (timeRange !== 'all') {
     const sinceMs = Date.now() - daysBack[timeRange as keyof typeof daysBack] * 86_400_000;
-    const since = Math.floor(sinceMs / 1000); // convert ms to seconds
+    const since = Math.floor(sinceMs / 1000);
     url.searchParams.set('since', since.toString());
   }
   url.searchParams.set('max', maxGames.toString());
   url.searchParams.set('opening', 'true');
   url.searchParams.set('analyzed', 'true');
-  url.searchParams.set('pgnInJson', 'true');
   if (perfType) url.searchParams.set('perfType', perfType);
 
-  // request NDJSON
+  // Fetch as PGN text
   const res = await fetch(url.toString(), {
-    headers: { Accept: 'application/x-ndjson' }
+    headers: { Accept: 'application/x-chess-pgn' }
   });
   if (!res.ok) throw new Error(`Games error ${res.status}`);
 
-  // parse each NDJSON line
-  const raw = await res.text();
-  const games = raw
-    .trim()
-    .split('\n')
-    .filter(Boolean)
-    .map(line => JSON.parse(line));
-
-  if (games.length === 0) {
-    console.warn('No games found. Raw response:', raw.slice(0, 500));
+  // Return PGN as plain text
+  const pgn = await res.text();
+  if (!pgn.trim()) {
+    console.warn('No games found. Raw response:', pgn.slice(0, 500));
   }
-
-  // enrich with player color and result
-  return games.map((g: any) => {
-    const isBlack =
-      g.players?.black?.user?.name?.toLowerCase() === username.toLowerCase();
-    const result =
-      (g.winner === 'white' && !isBlack) || (g.winner === 'black' && isBlack)
-        ? 'win'
-        : g.winner
-        ? 'loss'
-        : 'draw';
-    return { ...g, playerColor: isBlack ? 'black' : 'white', result };
-  });
+  return pgn;
 }
 
 /** Fetch profile + games together */
