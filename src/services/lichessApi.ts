@@ -1,4 +1,4 @@
-export type TimeRange = 'last30' | 'last90' | 'last180' | 'all';
+export type TimeRange = 'last30' | 'last90' | 'last180' | 'last365' | 'all';
 
 const BASE_URL = 'https://lichess.org/api';
 
@@ -9,26 +9,27 @@ export async function fetchLichessProfile(username: string) {
   return res.json();            // plain JSON
 }
 
+const daysBack: Record<Exclude<TimeRange, 'all'>, number> = {
+  last30: 30,
+  last90: 90,
+  last180: 180,
+  last365: 365
+};
+
 /** Download games in NDJSON and return them as an array */
 export async function fetchLichessGames(
   username: string,
-  timeRange: TimeRange = 'all',
+  timeRange: TimeRange = 'last90',
   maxGames = 300,
   perfType?: 'bullet' | 'blitz' | 'rapid' | 'classical'
 ) {
-  // work out the "since" cutoff in ms
-  const daysBack: Record<TimeRange, number> = {
-    last30: 30,
-    last90: 90,
-    last180: 180,
-    all: 365
-  };
-  const sinceMs = Date.now() - daysBack[timeRange] * 86_400_000;
-  const since = Math.floor(sinceMs / 1000); // convert ms to seconds
-
   // build URL safely
   const url = new URL(`${BASE_URL}/games/user/${username}`);
-  url.searchParams.set('since', since.toString());
+  if (timeRange !== 'all') {
+    const sinceMs = Date.now() - daysBack[timeRange as keyof typeof daysBack] * 86_400_000;
+    const since = Math.floor(sinceMs / 1000); // convert ms to seconds
+    url.searchParams.set('since', since.toString());
+  }
   url.searchParams.set('max', maxGames.toString());
   url.searchParams.set('opening', 'true');
   url.searchParams.set('analyzed', 'true');
@@ -48,6 +49,10 @@ export async function fetchLichessGames(
     .split('\n')
     .filter(Boolean)
     .map(line => JSON.parse(line));
+
+  if (games.length === 0) {
+    console.warn('No games found. Raw response:', raw.slice(0, 500));
+  }
 
   // enrich with player color and result
   return games.map((g: any) => {
