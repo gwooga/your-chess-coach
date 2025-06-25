@@ -1,4 +1,3 @@
-
 import { toast } from '@/hooks/use-toast';
 import { TimeRange, Platform } from '@/utils/types';
 import { Chess } from 'chess.js';
@@ -370,29 +369,23 @@ const downloadLichessPGN = async (
     const apiUrl = `https://lichess.org/api/games/user/${username}?since=${sinceTs}&max=300&opening=true&perfType=bullet,blitz,rapid,classical&pgnInJson=true`;
     
     setProgress(10);
-    
-    const response = await fetch(apiUrl);
-    
+
+    const response = await fetch(apiUrl, {
+      headers: { Accept: 'application/x-chess-pgn' }
+    });
+
     if (!response.ok) {
       throw new Error(`Failed to fetch Lichess games (${response.status})`);
     }
-    
-    // Lichess API returns ndjson (newline delimited JSON)
-    const text = await response.text();
+
+    const pgnText = await response.text();
     setProgress(60);
-    
-    const games = text
-      .trim()
-      .split('\n')
-      .filter(line => line.trim() !== '')
-      .map((line, index, array) => {
-        // Update progress as we process each game
-        setProgress(60 + Math.round(40 * (index / array.length)));
-        return JSON.parse(line);
-      });
-    
+
+    // Use your existing PGN parser
+    const games = parsePgnContent(pgnText);
+
     setProgress(100);
-    
+
     return games;
   } catch (error) {
     console.error("Error downloading Lichess PGN:", error);
