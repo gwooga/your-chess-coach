@@ -1,4 +1,3 @@
-
 export type TimeRange = 'last30' | 'last90' | 'last180' | 'all';
 
 const BASE_URL = 'https://lichess.org/api';
@@ -24,7 +23,8 @@ export async function fetchLichessGames(
     last180: 180,
     all: 365
   };
-  const since = Date.now() - daysBack[timeRange] * 86_400_000;
+  const sinceMs = Date.now() - daysBack[timeRange] * 86_400_000;
+  const since = Math.floor(sinceMs / 1000); // convert ms to seconds
 
   // build URL safely
   const url = new URL(`${BASE_URL}/games/user/${username}`);
