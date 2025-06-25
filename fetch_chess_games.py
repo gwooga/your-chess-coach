@@ -125,10 +125,11 @@ def fetch_lichess_games(username, since_ts, until_ts, need_analysis=False):
         "opening": "true",
         "evals": "true" if need_analysis else "false"
     }
+    # Convert ms to s for Lichess
     if since_ts is not None:
-        params["since"] = since_ts
+        params["since"] = int(since_ts // 1000)
     if until_ts is not None:
-        params["until"] = until_ts
+        params["until"] = int(until_ts // 1000)
 
     query = "&".join(f"{k}={v}" for k, v in params.items())
     full_url = f"{api_url}?{query}"
@@ -139,6 +140,11 @@ def fetch_lichess_games(username, since_ts, until_ts, need_analysis=False):
     if response.status_code != 200:
         print(f"Error fetching Lichess games: {response.status_code}")
         return None
+
+    # Debug: print first 500 chars of response
+    peek = next(response.iter_content(500))
+    print("First 500 bytes of response:", peek.decode(errors="ignore"))
+    response = requests.get(full_url, headers=headers, stream=True)  # re-fetch for actual writing
 
     out_file = "eval.pgn" if need_analysis else "raw.pgn"
     with open(out_file, "wb") as f:
