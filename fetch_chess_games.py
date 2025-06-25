@@ -141,14 +141,13 @@ def fetch_lichess_games(username, since_ts, until_ts, need_analysis=False):
         print(f"Error fetching Lichess games: {response.status_code}")
         return None
 
-    # Debug: print first 500 chars of response
-    peek = next(response.iter_content(500))
-    print("First 500 bytes of response:", peek.decode(errors="ignore"))
-    response = requests.get(full_url, headers=headers, stream=True)  # re-fetch for actual writing
-
     out_file = "eval.pgn" if need_analysis else "raw.pgn"
     with open(out_file, "wb") as f:
+        first_chunk = True
         for chunk in response.iter_content(8192):
+            if first_chunk:
+                print("First 500 bytes of response:", chunk[:500].decode(errors="ignore"))
+                first_chunk = False
             f.write(chunk)
 
     total_games = 0
