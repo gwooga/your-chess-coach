@@ -18,6 +18,7 @@ const ChessAnalyzer: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>("coach");
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [allUploadedGames, setAllUploadedGames] = useState<any[]>([]);
+  const isTimeRangeDisabled = true; // Set to false to re-enable in the future
   
   const handleUserSubmit = async (info: UserInfo, selectedTimeRange: TimeRange) => {
     setIsLoading(true);
@@ -321,8 +322,8 @@ const ChessAnalyzer: React.FC = () => {
             
             <div className="flex gap-2 items-center">
               {userInfo?.platform !== "uploaded" && (
-                <Select value={timeRange} onValueChange={(value) => handleTimeRangeChange(value as TimeRange)}>
-                  <SelectTrigger className="w-[180px]">
+                <Select value={timeRange} onValueChange={(value) => handleTimeRangeChange(value as TimeRange)} disabled={isTimeRangeDisabled}>
+                  <SelectTrigger className="w-[180px]" disabled={isTimeRangeDisabled}>
                     <SelectValue placeholder="Select time range" />
                   </SelectTrigger>
                   <SelectContent>
