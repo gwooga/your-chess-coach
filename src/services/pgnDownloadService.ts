@@ -307,14 +307,21 @@ const downloadChessComPGN = async (
     
     // Step 3: Download PGN from each archive
     const allGames: any[] = [];
-    
-    for (let i = 0; i < filteredArchives.length; i++) {
+    // Granular progress steps
+    const progressSteps = [0, 12, 25, 37, 50, 63, 75, 84, 100];
+    let stepIdx = 0;
+    setProgress(progressSteps[stepIdx++]);
+    const total = filteredArchives.length;
+    for (let i = 0; i < total; i++) {
       const archiveUrl = filteredArchives[i];
-      setProgress(Math.round((i / filteredArchives.length) * 100));
-      
+      // Calculate which progress step to use
+      const progressIndex = Math.min(
+        Math.floor(((i + 1) / total) * (progressSteps.length - 2)) + 1,
+        progressSteps.length - 2
+      );
+      setProgress(progressSteps[progressIndex]);
       try {
         const pgnResponse = await fetch(`${archiveUrl}/pgn`);
-        
         if (pgnResponse.ok) {
           const pgnText = await pgnResponse.text();
           const games = parsePgnContent(pgnText);
@@ -326,9 +333,7 @@ const downloadChessComPGN = async (
         console.error(`Error fetching from ${archiveUrl}:`, error);
       }
     }
-    
-    setProgress(100);
-    
+    setProgress(progressSteps[progressSteps.length - 1]);
     return allGames;
   } catch (error) {
     console.error("Error downloading Chess.com PGN:", error);
@@ -348,10 +353,13 @@ const downloadLichessPGN = async (
   setProgress: (progress: number) => void
 ): Promise<any[]> => {
   try {
+    // Granular progress steps
+    const progressSteps = [0, 12, 25, 37, 50, 63, 75, 84, 100];
+    let stepIdx = 0;
+    setProgress(progressSteps[stepIdx++]); // 0
     // Calculate date range
     const now = new Date();
     let since = new Date();
-    
     if (timeRange === 'last30') {
       since.setDate(now.getDate() - 30);
     } else if (timeRange === 'last90') {
@@ -361,31 +369,26 @@ const downloadLichessPGN = async (
     } else {
       since.setDate(now.getDate() - 365);
     }
-    
+    setProgress(progressSteps[stepIdx++]); // 12
     const sinceTs = Math.floor(since.getTime());
     const untilTs = Math.floor(now.getTime());
-    
     // Build Lichess API URL
     const apiUrl = `https://lichess.org/api/games/user/${username}?since=${sinceTs}&max=300&opening=true&perfType=bullet,blitz,rapid,classical&pgnInJson=true`;
-    
-    setProgress(10);
-
+    setProgress(progressSteps[stepIdx++]); // 25
     const response = await fetch(apiUrl, {
       headers: { Accept: 'application/x-chess-pgn' }
     });
-
+    setProgress(progressSteps[stepIdx++]); // 37
     if (!response.ok) {
       throw new Error(`Failed to fetch Lichess games (${response.status})`);
     }
-
+    setProgress(progressSteps[stepIdx++]); // 50
     const pgnText = await response.text();
-    setProgress(60);
-
+    setProgress(progressSteps[stepIdx++]); // 63
     // Use your existing PGN parser
     const games = parsePgnContent(pgnText);
-
-    setProgress(100);
-
+    setProgress(progressSteps[progressSteps.length - 2]); // 84
+    setProgress(progressSteps[progressSteps.length - 1]); // 100
     return games;
   } catch (error) {
     console.error("Error downloading Lichess PGN:", error);
