@@ -19,19 +19,11 @@ const ChessAnalyzer: React.FC = () => {
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [allUploadedGames, setAllUploadedGames] = useState<any[]>([]);
   
-  // Enhanced progress tracking with more granular steps
-  const updateProgress = (step: number) => {
-    const progressSteps = [0, 12, 25, 37, 50, 63, 75, 84, 100];
-    if (step >= 0 && step < progressSteps.length) {
-      setDownloadProgress(progressSteps[step]);
-    }
-  };
-
   const handleUserSubmit = async (info: UserInfo, selectedTimeRange: TimeRange) => {
     setIsLoading(true);
     setUserInfo(info);
     setTimeRange(selectedTimeRange);
-    updateProgress(0);
+    setDownloadProgress(0);
     
     try {
       toast({
@@ -39,21 +31,12 @@ const ChessAnalyzer: React.FC = () => {
         description: `Downloading games for ${info.username} from ${info.platform}...`,
       });
       
-      updateProgress(1); // 12%
-      
       // Download the PGN data first
       const games = await downloadPGN(
         info.username, 
         info.platform, 
         selectedTimeRange,
-        (progress) => {
-          // Map the original 0-100% to our granular steps
-          if (progress <= 25) updateProgress(2); // 25%
-          else if (progress <= 50) updateProgress(3); // 37%
-          else if (progress <= 75) updateProgress(4); // 50%
-          else if (progress < 100) updateProgress(5); // 63%
-          else updateProgress(6); // 75%
-        }
+        setDownloadProgress
       );
       
       if (games.length === 0) {
@@ -65,8 +48,6 @@ const ChessAnalyzer: React.FC = () => {
         setIsLoading(false);
         return;
       }
-      
-      updateProgress(7); // 84%
       
       toast({
         title: "Download complete",
@@ -81,7 +62,6 @@ const ChessAnalyzer: React.FC = () => {
       });
       
       setUserAnalysis(analysis);
-      updateProgress(8); // 100%
       
       toast({
         title: "Analysis complete",
@@ -101,7 +81,7 @@ const ChessAnalyzer: React.FC = () => {
   
   const handlePgnUpload = async (pgnContent: string) => {
     setIsLoading(true);
-    updateProgress(0);
+    setDownloadProgress(0);
     
     try {
       toast({
@@ -109,12 +89,10 @@ const ChessAnalyzer: React.FC = () => {
         description: "Parsing uploaded games...",
       });
       
-      updateProgress(1); // 12%
       console.log("Parsing PGN content, length:", pgnContent.length);
       
       // Parse the uploaded PGN content
       const parsedGames = parsePgnContent(pgnContent);
-      updateProgress(3); // 37%
       
       console.log(`Parsed ${parsedGames.length} games from PGN content`);
       
@@ -128,14 +106,11 @@ const ChessAnalyzer: React.FC = () => {
         return;
       }
       
-      updateProgress(4); // 50%
-      
       // Store all the parsed games to filter later by time range
       setAllUploadedGames(parsedGames);
       
       // Filter games by time range
       const filteredGames = filterGamesByTimeRange(parsedGames, 'last90'); // Default time range
-      updateProgress(6); // 75%
       
       toast({
         title: "Processing complete",
@@ -152,7 +127,7 @@ const ChessAnalyzer: React.FC = () => {
       };
       
       setUserInfo(uploadUserInfo);
-      updateProgress(7); // 84%
+      setDownloadProgress(100);
       
       // Now analyze the data
       const analysis = await analyzeChessData({ 
@@ -162,7 +137,6 @@ const ChessAnalyzer: React.FC = () => {
       });
       
       setUserAnalysis(analysis);
-      updateProgress(8); // 100%
       
       toast({
         title: "Analysis complete",
@@ -228,7 +202,7 @@ const ChessAnalyzer: React.FC = () => {
     
     setTimeRange(value);
     setIsLoading(true);
-    updateProgress(0);
+    setDownloadProgress(0);
     
     try {
       // Handle different paths for uploaded PGN vs APIs
@@ -241,7 +215,7 @@ const ChessAnalyzer: React.FC = () => {
           description: `Analyzing ${filteredGames.length} games from the selected time period...`,
         });
         
-        updateProgress(6); // 75%
+        setDownloadProgress(100);
         
         // Analyze the filtered games
         const analysis = await analyzeChessData({
@@ -251,7 +225,6 @@ const ChessAnalyzer: React.FC = () => {
         });
         
         setUserAnalysis(analysis);
-        updateProgress(8); // 100%
         
         toast({
           title: "Analysis complete",
@@ -264,20 +237,11 @@ const ChessAnalyzer: React.FC = () => {
           description: `Downloading games for ${userInfo.username} with new time range...`,
         });
         
-        updateProgress(1); // 12%
-        
         const games = await downloadPGN(
           userInfo.username, 
           userInfo.platform, 
           value,
-          (progress) => {
-            // Map the original 0-100% to our granular steps
-            if (progress <= 25) updateProgress(2); // 25%
-            else if (progress <= 50) updateProgress(3); // 37%
-            else if (progress <= 75) updateProgress(4); // 50%
-            else if (progress < 100) updateProgress(5); // 63%
-            else updateProgress(6); // 75%
-          }
+          setDownloadProgress
         );
         
         if (games.length === 0) {
@@ -289,8 +253,6 @@ const ChessAnalyzer: React.FC = () => {
           setIsLoading(false);
           return;
         }
-        
-        updateProgress(7); // 84%
         
         toast({
           title: "Download complete",
@@ -304,7 +266,6 @@ const ChessAnalyzer: React.FC = () => {
           timeRange: value 
         });
         setUserAnalysis(analysis);
-        updateProgress(8); // 100%
         
         toast({
           title: "Analysis complete",
@@ -360,12 +321,8 @@ const ChessAnalyzer: React.FC = () => {
             
             <div className="flex gap-2 items-center">
               {userInfo?.platform !== "uploaded" && (
-                <Select 
-                  value={timeRange} 
-                  onValueChange={(value) => handleTimeRangeChange(value as TimeRange)}
-                  disabled={true}
-                >
-                  <SelectTrigger className="w-[180px] opacity-50 cursor-not-allowed">
+                <Select value={timeRange} onValueChange={(value) => handleTimeRangeChange(value as TimeRange)}>
+                  <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Select time range" />
                   </SelectTrigger>
                   <SelectContent>
