@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +17,7 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, isLoading }) => {
   const [username, setUsername] = useState('');
   const [platform, setPlatform] = useState<Platform>('chess.com');
   const [timeRange, setTimeRange] = useState<TimeRange>('last90');
+  const isTimeRangeDisabled = true;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,8 +76,9 @@ const UserForm: React.FC<UserFormProps> = ({ onSubmit, isLoading }) => {
             <Select
               value={timeRange}
               onValueChange={(value) => setTimeRange(value as TimeRange)}
+              disabled={isTimeRangeDisabled}
             >
-              <SelectTrigger id="timeRange" className="border-chess-purple/30">
+              <SelectTrigger id="timeRange" className="border-chess-purple/30" disabled={isTimeRangeDisabled}>
                 <SelectValue placeholder="Select time range" />
               </SelectTrigger>
               <SelectContent>
