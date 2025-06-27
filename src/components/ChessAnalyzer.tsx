@@ -19,7 +19,42 @@ const ChessAnalyzer: React.FC = () => {
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
   const [allUploadedGames, setAllUploadedGames] = useState<any[]>([]);
   const isTimeRangeDisabled = true; // Set to false to re-enable in the future
-  
+  // Track loader timing for intermediate progress
+  const loaderRef = React.useRef({
+    lastRealProgress: 0,
+    lastRealTime: 0,
+    intermediateTimeout: null as null | ReturnType<typeof setTimeout>,
+  });
+
+  // Enhanced setProgress to handle intermediate step
+  const setProgressWithIntermediate = React.useCallback((progress: number) => {
+    setDownloadProgress((prev) => {
+      // If this is the first real jump (from 0 to >0), record the time
+      if (prev === 0 && progress > 0) {
+        loaderRef.current.lastRealTime = Date.now();
+        loaderRef.current.lastRealProgress = progress;
+      } else if (progress > loaderRef.current.lastRealProgress) {
+        // Schedule intermediate step for next real progress
+        const timeToFirst = Date.now() - loaderRef.current.lastRealTime;
+        if (loaderRef.current.intermediateTimeout) {
+          clearTimeout(loaderRef.current.intermediateTimeout);
+        }
+        // Find the next intermediate step
+        const progressSteps = [0, 12, 25, 37, 50, 63, 75, 84, 100];
+        const idx = progressSteps.findIndex((v) => v === loaderRef.current.lastRealProgress);
+        const nextIntermediate = progressSteps[idx + 1] && progressSteps[idx + 2] ? progressSteps[idx + 1] + Math.floor((progressSteps[idx + 2] - progressSteps[idx + 1]) / 2) : null;
+        if (nextIntermediate && progress < 100) {
+          loaderRef.current.intermediateTimeout = setTimeout(() => {
+            setDownloadProgress((current) => (current < nextIntermediate ? nextIntermediate : current));
+          }, Math.max(500, Math.floor(timeToFirst / 2)));
+        }
+        loaderRef.current.lastRealTime = Date.now();
+        loaderRef.current.lastRealProgress = progress;
+      }
+      return progress;
+    });
+  }, []);
+
   const handleUserSubmit = async (info: UserInfo, selectedTimeRange: TimeRange) => {
     setIsLoading(true);
     setUserInfo(info);
@@ -37,7 +72,7 @@ const ChessAnalyzer: React.FC = () => {
         info.username, 
         info.platform, 
         selectedTimeRange,
-        setDownloadProgress
+        setProgressWithIntermediate
       );
       
       if (games.length === 0) {
@@ -242,7 +277,7 @@ const ChessAnalyzer: React.FC = () => {
           userInfo.username, 
           userInfo.platform, 
           value,
-          setDownloadProgress
+          setProgressWithIntermediate
         );
         
         if (games.length === 0) {
