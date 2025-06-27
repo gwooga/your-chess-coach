@@ -34,9 +34,10 @@ const ChessAnalyzer: React.FC = () => {
 
   // Enhanced setProgress to handle continuous fake-progress
   const setProgressWithContinuousFake = React.useCallback((progress: number) => {
+    console.log('[REAL PROGRESS]', progress, userInfo?.platform || 'unknown');
     loaderRef.current.realProgress = progress;
     setDownloadProgress(progress);
-  }, []);
+  }, [userInfo]);
 
   // Continuous fake-progress animation effect
   React.useEffect(() => {
