@@ -17,6 +17,7 @@ const ChessAnalyzer: React.FC = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>('last90'); // Default to 90 days
   const [activeTab, setActiveTab] = useState<string>("coach");
   const [downloadProgress, setDownloadProgress] = useState<number>(0);
+  const [displayedProgress, setDisplayedProgress] = useState<number>(0);
   const [allUploadedGames, setAllUploadedGames] = useState<any[]>([]);
   const isTimeRangeDisabled = true; // Set to false to re-enable in the future
   // Track loader timing for intermediate progress
@@ -24,36 +25,56 @@ const ChessAnalyzer: React.FC = () => {
     lastRealProgress: 0,
     lastRealTime: 0,
     intermediateTimeout: null as null | ReturnType<typeof setTimeout>,
+    interval: null as null | ReturnType<typeof setInterval>,
+    realProgress: 0,
   });
 
-  // Enhanced setProgress to handle intermediate step
-  const setProgressWithIntermediate = React.useCallback((progress: number) => {
-    setDownloadProgress((prev) => {
-      // If this is the first real jump (from 0 to >0), record the time
-      if (prev === 0 && progress > 0) {
-        loaderRef.current.lastRealTime = Date.now();
-        loaderRef.current.lastRealProgress = progress;
-      } else if (progress > loaderRef.current.lastRealProgress) {
-        // Schedule intermediate step for next real progress
-        const timeToFirst = Date.now() - loaderRef.current.lastRealTime;
-        if (loaderRef.current.intermediateTimeout) {
-          clearTimeout(loaderRef.current.intermediateTimeout);
-        }
-        // Find the next intermediate step
-        const progressSteps = [0, 12, 25, 37, 50, 63, 75, 84, 100];
-        const idx = progressSteps.findIndex((v) => v === loaderRef.current.lastRealProgress);
-        const nextIntermediate = progressSteps[idx + 1] && progressSteps[idx + 2] ? progressSteps[idx + 1] + Math.floor((progressSteps[idx + 2] - progressSteps[idx + 1]) / 2) : null;
-        if (nextIntermediate && progress < 100) {
-          loaderRef.current.intermediateTimeout = setTimeout(() => {
-            setDownloadProgress((current) => (current < nextIntermediate ? nextIntermediate : current));
-          }, Math.max(500, Math.floor(timeToFirst / 2)));
-        }
-        loaderRef.current.lastRealTime = Date.now();
-        loaderRef.current.lastRealProgress = progress;
-      }
-      return progress;
-    });
+  const progressStepsChessCom = [0, 7, 12, 18, 25, 31, 37, 43, 50, 56, 63, 69, 75, 80, 84, 89, 93, 97, 100];
+  const progressStepsLichess = [0, 10, 18, 25, 33, 37, 44, 50, 57, 63, 69, 75, 80, 84, 89, 93, 97, 100];
+
+  // Enhanced setProgress to handle continuous fake-progress
+  const setProgressWithContinuousFake = React.useCallback((progress: number) => {
+    loaderRef.current.realProgress = progress;
+    setDownloadProgress(progress);
   }, []);
+
+  // Continuous fake-progress animation effect
+  React.useEffect(() => {
+    if (!isLoading) {
+      setDisplayedProgress(0);
+      if (loaderRef.current.interval) clearInterval(loaderRef.current.interval);
+      return;
+    }
+    if (loaderRef.current.interval) clearInterval(loaderRef.current.interval);
+    loaderRef.current.interval = setInterval(() => {
+      setDisplayedProgress((prev) => {
+        // If real progress is 100, animate to 100 and stop
+        if (loaderRef.current.realProgress >= 100) {
+          if (prev < 100) return Math.min(prev + 2, 100);
+          if (loaderRef.current.interval) clearInterval(loaderRef.current.interval);
+          return 100;
+        }
+        // Choose progress steps array based on platform
+        let steps = progressStepsChessCom;
+        if (userInfo && userInfo.platform === 'lichess') {
+          steps = progressStepsLichess;
+        }
+        // Find the next expected real progress step
+        const currentIdx = steps.findIndex((v) => v === loaderRef.current.realProgress);
+        const nextStep = steps[currentIdx + 1] !== undefined ? steps[currentIdx + 1] : 100;
+        // Only increment if displayed progress is less than next expected step
+        if (prev < nextStep) {
+          // Move smoothly, but don't overshoot the next expected step
+          return Math.min(prev + 0.5, nextStep);
+        }
+        // If caught up, just stay
+        return prev;
+      });
+    }, 50);
+    return () => {
+      if (loaderRef.current.interval) clearInterval(loaderRef.current.interval);
+    };
+  }, [isLoading, userInfo]);
 
   const handleUserSubmit = async (info: UserInfo, selectedTimeRange: TimeRange) => {
     setIsLoading(true);
@@ -72,7 +93,7 @@ const ChessAnalyzer: React.FC = () => {
         info.username, 
         info.platform, 
         selectedTimeRange,
-        setProgressWithIntermediate
+        setProgressWithContinuousFake
       );
       
       if (games.length === 0) {
@@ -277,7 +298,7 @@ const ChessAnalyzer: React.FC = () => {
           userInfo.username, 
           userInfo.platform, 
           value,
-          setProgressWithIntermediate
+          setProgressWithContinuousFake
         );
         
         if (games.length === 0) {
@@ -329,11 +350,11 @@ const ChessAnalyzer: React.FC = () => {
       {isLoading && (
         <div className="mb-8">
           <p className="mb-2 text-sm text-muted-foreground">
-            {downloadProgress < 100 
-              ? `Downloading games: ${downloadProgress}%` 
+            {displayedProgress < 100 
+              ? `Downloading games: ${Math.floor(displayedProgress)}%` 
               : "Analyzing games..."}
           </p>
-          <Progress value={downloadProgress} className="h-2" />
+          <Progress value={displayedProgress} className="h-2" />
         </div>
       )}
       
