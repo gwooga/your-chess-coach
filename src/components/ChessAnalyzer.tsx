@@ -27,17 +27,19 @@ const ChessAnalyzer: React.FC = () => {
     intermediateTimeout: null as null | ReturnType<typeof setTimeout>,
     interval: null as null | ReturnType<typeof setInterval>,
     realProgress: 0,
+    platform: 'chess.com' as Platform,
   });
 
   const progressStepsChessCom = [0, 7, 12, 18, 25, 31, 37, 43, 50, 56, 63, 69, 75, 80, 84, 89, 93, 97, 100];
   const progressStepsLichess = [0, 10, 18, 25, 33, 37, 44, 50, 57, 63, 69, 75, 80, 84, 89, 93, 97, 100];
 
   // Enhanced setProgress to handle continuous fake-progress
-  const setProgressWithContinuousFake = React.useCallback((progress: number) => {
-    console.log('[REAL PROGRESS]', progress, userInfo?.platform || 'unknown');
+  const setProgressWithContinuousFake = React.useCallback((progress: number, platform: Platform) => {
+    console.log('[REAL PROGRESS]', progress, platform);
     loaderRef.current.realProgress = progress;
+    loaderRef.current.platform = platform;
     setDownloadProgress(progress);
-  }, [userInfo]);
+  }, []);
 
   // Continuous fake-progress animation effect
   React.useEffect(() => {
@@ -57,7 +59,7 @@ const ChessAnalyzer: React.FC = () => {
         }
         // Choose progress steps array based on platform
         let steps = progressStepsChessCom;
-        if (userInfo && userInfo.platform === 'lichess') {
+        if (loaderRef.current.platform === 'lichess') {
           steps = progressStepsLichess;
         }
         // Find the next expected real progress step
@@ -75,7 +77,7 @@ const ChessAnalyzer: React.FC = () => {
     return () => {
       if (loaderRef.current.interval) clearInterval(loaderRef.current.interval);
     };
-  }, [isLoading, userInfo]);
+  }, [isLoading]);
 
   const handleUserSubmit = async (info: UserInfo, selectedTimeRange: TimeRange) => {
     setIsLoading(true);
@@ -94,7 +96,7 @@ const ChessAnalyzer: React.FC = () => {
         info.username, 
         info.platform, 
         selectedTimeRange,
-        setProgressWithContinuousFake
+        (p) => setProgressWithContinuousFake(p, info.platform)
       );
       
       if (games.length === 0) {
@@ -299,7 +301,7 @@ const ChessAnalyzer: React.FC = () => {
           userInfo.username, 
           userInfo.platform, 
           value,
-          setProgressWithContinuousFake
+          (p) => setProgressWithContinuousFake(p, userInfo!.platform)
         );
         
         if (games.length === 0) {
