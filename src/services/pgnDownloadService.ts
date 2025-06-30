@@ -58,6 +58,8 @@ export const filterGamesByTimeRange = (games: any[], timeRange: TimeRange): any[
 // Parse PGN content and extract games with improved error handling
 export const parsePgnContent = (pgnContent: string): any[] => {
   const games: any[] = [];
+  let successfulGames = 0;
+  let failedGames = 0;
   console.log("Starting PGN parsing, content length:", pgnContent.length);
   
   try {
@@ -167,33 +169,8 @@ export const parsePgnContent = (pgnContent: string): any[] => {
         // Create a new Chess instance for each game
         const chess = new Chess();
         
-        // Clean the PGN before loading - remove comments and annotations
-        let cleanedPgn = gameText
-          .replace(/\{[^}]*\}/g, '') // Remove comments in curly braces
-          .replace(/%[^\s\n]*/g, '') // Remove %eval, %clk annotations
-          .replace(/\$\d+/g, '')    // Remove numeric annotation glyphs
-          .replace(/\([^)]*\)/g, '') // Remove variations in parentheses
-          .replace(/;[^\n]*/g, ''); // Remove semicolon comments
-        
-        try {
-          // First attempt to load the PGN
-          chess.loadPgn(cleanedPgn);
-        } catch (parseError) {
-          console.error(`Error loading game ${i+1}, trying with more cleanup:`, parseError);
-          
-          // More aggressive cleanup
-          cleanedPgn = cleanedPgn
-            .replace(/\d+\.\.\./g, '') // Remove move continuations like "1..."
-            .replace(/\s\d+\s?\.+\s?/g, ' ') // Remove move numbers
-            .replace(/\s{2,}/g, ' '); // Normalize whitespace
-          
-          try {
-            chess.loadPgn(cleanedPgn);
-          } catch (secondError) {
-            console.error(`Failed to load game ${i+1} even after cleanup:`, secondError);
-            continue; // Skip this game
-          }
-        }
+        // Attempt to load the PGN. chess.js is strict and may throw errors.
+        chess.loadPgn(gameText);
         
         // Extract headers
         const headers = chess.header();
@@ -229,9 +206,13 @@ export const parsePgnContent = (pgnContent: string): any[] => {
         
         // Add game to collection
         games.push(gameObj);
-      } catch (e) {
-        console.error("Error processing game:", e);
-        // Continue with next game
+        successfulGames++;
+      } catch (e: any) {
+        failedGames++;
+        // Log the failed game and error for debugging, but continue processing
+        console.warn(`Skipping game #${i + 1} due to parsing error: ${e.message}`);
+        // Optionally log the problematic PGN content
+        // console.log("Problematic PGN:", gameText);
       }
     }
   } catch (e) {
@@ -243,7 +224,7 @@ export const parsePgnContent = (pgnContent: string): any[] => {
     });
   }
   
-  console.log(`Successfully parsed ${games.length} games from PGN content`);
+  console.log(`Parsing complete. Successfully parsed: ${successfulGames} games. Failed: ${failedGames} games.`);
   return games;
 };
 

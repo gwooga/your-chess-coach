@@ -30,12 +30,13 @@ const ChessAnalyzer: React.FC = () => {
     platform: 'chess.com' as Platform,
   });
 
-  const progressStepsChessCom = [0, 7, 12, 18, 25, 31, 37, 43, 50, 56, 63, 69, 75, 80, 84, 89, 93, 97, 100];
-  const progressStepsLichess = [0, 10, 18, 25, 33, 37, 44, 50, 57, 63, 69, 75, 80, 84, 89, 93, 97, 100];
+  // Accurate milestone arrays based on backend reporting
+  const chessComMilestones = [0, 12, 25, 37, 50, 63, 75, 84, 100];
+  const lichessMilestones = [0, 12, 25, 37, 50, 63, 84, 100];
 
   // Enhanced setProgress to handle continuous fake-progress
   const setProgressWithContinuousFake = React.useCallback((progress: number, platform: Platform) => {
-    console.log('[REAL PROGRESS]', progress, platform);
+    // console.log('[REAL PROGRESS]', progress, platform);
     loaderRef.current.realProgress = progress;
     loaderRef.current.platform = platform;
     setDownloadProgress(progress);
@@ -48,36 +49,57 @@ const ChessAnalyzer: React.FC = () => {
       if (loaderRef.current.interval) clearInterval(loaderRef.current.interval);
       return;
     }
+
     if (loaderRef.current.interval) clearInterval(loaderRef.current.interval);
+
     loaderRef.current.interval = setInterval(() => {
       setDisplayedProgress((prev) => {
-        // If real progress is 100, animate to 100 and stop
-        if (loaderRef.current.realProgress >= 100) {
-          if (prev < 100) return Math.min(prev + 2, 100);
+        const realProgress = loaderRef.current.realProgress;
+
+        // If loading is done, go to 100 and stop
+        if (realProgress >= 100) {
           if (loaderRef.current.interval) clearInterval(loaderRef.current.interval);
           return 100;
         }
-        // Choose progress steps array based on platform
-        let steps = progressStepsChessCom;
-        if (loaderRef.current.platform === 'lichess') {
-          steps = progressStepsLichess;
+
+        const milestones =
+          loaderRef.current.platform === 'lichess'
+            ? lichessMilestones
+            : chessComMilestones;
+
+        // Find the index of the milestone we're currently at or have passed
+        let currentMilestoneIndex = -1;
+        for (let i = milestones.length - 1; i >= 0; i--) {
+          if (realProgress >= milestones[i]) {
+            currentMilestoneIndex = i;
+            break;
+          }
         }
-        // Find the next expected real progress step
-        const currentIdx = steps.findIndex((v) => v === loaderRef.current.realProgress);
-        const nextStep = steps[currentIdx + 1] !== undefined ? steps[currentIdx + 1] : 100;
-        // Only increment if displayed progress is less than next expected step
-        if (prev < nextStep) {
-          // Move smoothly, but don't overshoot the next expected step
-          return Math.min(prev + 0.5, nextStep);
+        
+        const nextMilestone = milestones[currentMilestoneIndex + 1] || 100;
+
+        // If displayed progress is already at the next milestone, just wait
+        if (prev >= nextMilestone) {
+          return prev;
         }
-        // If caught up, just stay
-        return prev;
+
+        // Move faster to catch up to real progress, then move slowly
+        const gap = Math.max(0, realProgress - prev);
+        const increment = 0.25 + gap / 10; // Base speed + catch-up speed
+
+        const newProgress = prev + increment;
+
+        // Animate up to the next milestone, but not past it
+        return Math.min(newProgress, nextMilestone);
       });
-    }, 50);
+    }, 75); // Update interval for smoother animation
+
     return () => {
-      if (loaderRef.current.interval) clearInterval(loaderRef.current.interval);
+      if (loaderRef.current.interval) {
+        clearInterval(loaderRef.current.interval);
+      }
     };
-  }, [isLoading]);
+  }, [isLoading, setProgressWithContinuousFake]);
 
   const handleUserSubmit = async (info: UserInfo, selectedTimeRange: TimeRange) => {
     setIsLoading(true);
