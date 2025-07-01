@@ -14,7 +14,7 @@ import {
 } from '../utils/types';
 
 // Import all our modular services
-import { analyzeOpenings } from './chess/openingAnalysis';
+import { analyzeOpenings } from './chess/openingAnalysis.js';
 import { generateTimeAnalysis, findBestAndWorstPerformances } from './chess/timeAnalysis';
 import { extractInsights } from './chess/insightsService';
 import { extractRatings } from './chess/ratingsService';
