@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import RatingDisplay from './RatingDisplay';
 import { UserAnalysis, ChessVariant, OpeningData } from '@/utils/types';
@@ -11,14 +10,77 @@ import CoachPerformance from './coach/CoachPerformance';
 interface CoachTabProps {
   analysis: UserAnalysis;
   variant: ChessVariant;
+  username: string;
+  platform: string;
+  pgn: string;
+  average_rating: string | number;
 }
 
-const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant }) => {
+const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platform, pgn, average_rating }) => {
   const [activeSection, setActiveSection] = useState<string>("summary");
+  const [aiReport, setAiReport] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Get variant-specific data
   const variantData = analysis.openings[variant];
   
+  // Fetch AI report when summary tab is active and analysis changes
+  useEffect(() => {
+    const fetchAIReport = async () => {
+      setLoading(true);
+      setError(null);
+      setAiReport(null);
+      try {
+        const res = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pgn,
+            username,
+            platform,
+            average_rating,
+            openings_stats: JSON.stringify(analysis.openings),
+            other_stats: JSON.stringify({
+              strengths: analysis.strengths,
+              weaknesses: analysis.weaknesses,
+              recommendations: analysis.recommendations,
+              phaseAccuracy: analysis.phaseAccuracy,
+              timePerformance: analysis.timePerformance,
+              dayPerformance: analysis.dayPerformance,
+              conversionRate: analysis.conversionRate,
+            })
+          })
+        });
+        if (!res.ok) throw new Error('Failed to fetch AI report');
+        const data = await res.json();
+        setAiReport(data.report);
+      } catch (err: any) {
+        setError(err.message || 'Unknown error');
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (activeSection === 'summary' && analysis) {
+      fetchAIReport();
+    }
+  }, [activeSection, analysis, username, platform, pgn, average_rating]);
+
+  // Helper to render the AI report in sections
+  const renderAISections = (report: string) => {
+    // Simple split by section headers (improve as needed)
+    const sections = report.split(/\n(?=\d+\.|Coach Analysis|Strengths|Areas to Improve|Study Recommendations)/g);
+    return (
+      <div className="space-y-8 mb-8">
+        {sections.map((section, idx) => (
+          <div key={idx} className="bg-slate-50 p-6 rounded-lg border border-slate-200">
+            <div className="prose max-w-none" style={{ whiteSpace: 'pre-wrap' }}>{section.trim()}</div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-8">
       <div className="mb-6">
@@ -39,6 +101,9 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant }) => {
           
           {/* Coach's Summary Content */}
           <TabsContent value="summary" className="mt-6">
+            {loading && <div className="mb-4">Loading AI coaching report...</div>}
+            {error && <div className="mb-4 text-red-500">{error}</div>}
+            {aiReport && renderAISections(aiReport)}
             <CoachSummary 
               analysis={analysis} 
               topWhiteOpening={variantData.meaningfulWhite?.[0] || null}

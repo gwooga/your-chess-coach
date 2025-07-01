@@ -20,6 +20,7 @@ const ChessAnalyzer: React.FC = () => {
   const [displayedProgress, setDisplayedProgress] = useState<number>(0);
   const [allUploadedGames, setAllUploadedGames] = useState<any[]>([]);
   const isTimeRangeDisabled = true; // Set to false to re-enable in the future
+  const [pgn, setPgn] = useState<string>("");
   // Track loader timing for intermediate progress
   const loaderRef = React.useRef({
     lastRealProgress: 0,
@@ -145,6 +146,9 @@ const ChessAnalyzer: React.FC = () => {
       
       setUserAnalysis(analysis);
       
+      // Store PGN for AI
+      setPgn(games.map(g => g.pgn).join('\n\n'));
+      
       toast({
         title: "Analysis complete",
         description: `Successfully analyzed ${games.length} games for ${info.username}!`,
@@ -219,6 +223,9 @@ const ChessAnalyzer: React.FC = () => {
       });
       
       setUserAnalysis(analysis);
+      
+      // Store uploaded PGN for AI
+      setPgn(pgnContent);
       
       toast({
         title: "Analysis complete",
@@ -366,6 +373,14 @@ const ChessAnalyzer: React.FC = () => {
     }
   };
 
+  // Helper to calculate average rating
+  const getAverageRating = (ratings: any) => {
+    if (!ratings) return '';
+    const values = Object.values(ratings).filter((v) => typeof v === 'number');
+    if (values.length === 0) return '';
+    return Math.round(values.reduce((a, b) => a + (b as number), 0) / values.length);
+  };
+
   return (
     <div className="container py-8">
       <div className="flex items-center justify-between mb-8">
@@ -433,7 +448,14 @@ const ChessAnalyzer: React.FC = () => {
             </TabsList>
             
             <TabsContent value="coach" className="mt-0">
-              <CoachTab analysis={userAnalysis} variant="all" />
+              <CoachTab 
+                analysis={userAnalysis} 
+                variant="all" 
+                username={userInfo?.username || ''}
+                platform={userInfo?.platform || ''}
+                pgn={pgn}
+                average_rating={getAverageRating(userAnalysis.ratings)}
+              />
             </TabsContent>
             
             <TabsContent value="all" className="mt-0">
