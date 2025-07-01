@@ -1,4 +1,3 @@
-import { toast } from '../hooks/use-toast';
 import { TimeRange, Platform } from '../utils/types';
 import { Chess } from 'chess.js';
 
@@ -217,11 +216,7 @@ export const parsePgnContent = (pgnContent: string): any[] => {
     }
   } catch (e) {
     console.error("Critical error during PGN parsing:", e);
-    toast({
-      title: "Parsing error",
-      description: "Failed to parse the uploaded file. Please check the file format.",
-      variant: "destructive",
-    });
+    console.error('Parsing error: Failed to parse the uploaded file. Please check the file format.');
   }
   
   console.log(`Parsing complete. Successfully parsed: ${successfulGames} games. Failed: ${failedGames} games.`);
@@ -247,11 +242,7 @@ const downloadChessComPGN = async (
     const archives = archivesData.archives;
     
     if (!archives || archives.length === 0) {
-      toast({
-        title: "No archives found",
-        description: `No game archives found for ${username} on Chess.com`,
-        variant: "destructive",
-      });
+      console.error(`No game archives found for ${username} on Chess.com`);
       return [];
     }
     
@@ -318,11 +309,7 @@ const downloadChessComPGN = async (
     return allGames;
   } catch (error) {
     console.error("Error downloading Chess.com PGN:", error);
-    toast({
-      title: "Download failed",
-      description: `Failed to download games from Chess.com: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      variant: "destructive",
-    });
+    console.error('Download failed: Failed to download games from Chess.com');
     return [];
   }
 };
@@ -373,11 +360,7 @@ const downloadLichessPGN = async (
     return games;
   } catch (error) {
     console.error("Error downloading Lichess PGN:", error);
-    toast({
-      title: "Download failed",
-      description: `Failed to download games from Lichess: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      variant: "destructive",
-    });
+    console.error('Download failed: Failed to download games from Lichess');
     return [];
   }
 };
