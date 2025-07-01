@@ -118,25 +118,20 @@ const processGames = (games: any[], sequences: Record<string, any>, color: 'whit
     
     if (!moves) return;
     
-    // Extract opening name from headers
-    let openingName = "Unknown Opening";
-    if (game.headers) {
-      openingName = extractOpeningName(game.headers);
-    }
-    
-    // Process the moves to extract opening sequences at different lengths
-    const movePairs = moves.split(/\d+\./).filter(Boolean);
+    // Clean the moves string before splitting into move pairs
+    const cleanedMoves = cleanMoveSequence(moves);
+    const movePairs = cleanedMoves.split(/\d+\./).filter(Boolean);
     
     // Extract sequences of different depths
     [2, 3, 4, 5, 6, 7, 8, 10].forEach(depth => {
       if (movePairs.length >= depth) {
-        let sequenceMovePairs = movePairs.slice(0, depth).join(' ').trim();
-        sequenceMovePairs = cleanMoveSequence(sequenceMovePairs); // Clean the sequence
+        const sequenceMovePairs = movePairs.slice(0, depth).join(' ').trim();
         const sequenceKey = `${color}${depth}`;
         
-        // If opening name wasn't found in headers, try to get it from the database
-        if (openingName === "Unknown Opening") {
-          openingName = getOpeningName(sequenceMovePairs);
+        // Extract opening name from headers
+        let openingName = "Unknown Opening";
+        if (game.headers) {
+          openingName = extractOpeningName(game.headers);
         }
         
         if (!sequences[sequenceKey][sequenceMovePairs]) {
