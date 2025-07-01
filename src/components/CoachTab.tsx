@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import RatingDisplay from './RatingDisplay';
 import { UserAnalysis, ChessVariant, OpeningData } from '@/utils/types';
@@ -22,11 +22,25 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // --- Caching logic ---
+  // Create a key based on the relevant data
+  const analysisKey = JSON.stringify({ pgn, username, platform, average_rating });
+  // Ref to store last key and report
+  const lastKeyRef = useRef<string | null>(null);
+  const lastReportRef = useRef<string | null>(null);
+  
   // Get variant-specific data
   const variantData = analysis.openings[variant];
   
-  // Fetch AI report when summary tab is active and analysis changes
+  // Fetch AI report only if analysisKey changes
   useEffect(() => {
+    if (activeSection !== 'summary') return;
+    if (lastKeyRef.current === analysisKey && lastReportRef.current) {
+      setAiReport(lastReportRef.current);
+      setLoading(false);
+      setError(null);
+      return;
+    }
     const fetchAIReport = async () => {
       setLoading(true);
       setError(null);
@@ -55,16 +69,16 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
         if (!res.ok) throw new Error('Failed to fetch AI report');
         const data = await res.json();
         setAiReport(data.report);
+        lastKeyRef.current = analysisKey;
+        lastReportRef.current = data.report;
       } catch (err: any) {
         setError(err.message || 'Unknown error');
       } finally {
         setLoading(false);
       }
     };
-    if (activeSection === 'summary' && analysis) {
-      fetchAIReport();
-    }
-  }, [activeSection, analysis, username, platform, pgn, average_rating]);
+    fetchAIReport();
+  }, [activeSection, analysisKey, analysis]);
 
   // Helper to render the AI report in sections
   const renderAISections = (report: string) => {
