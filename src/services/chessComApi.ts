@@ -1,6 +1,5 @@
-
-import { toast } from '@/hooks/use-toast';
-import { UserInfo, TimeRange } from '@/utils/types';
+import { toast } from '../hooks/use-toast';
+import { UserInfo, TimeRange } from '../utils/types';
 
 // Chess.com API endpoints
 const BASE_URL = 'https://api.chess.com/pub';

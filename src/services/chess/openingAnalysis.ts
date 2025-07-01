@@ -1,4 +1,4 @@
-import { OpeningData, OpeningsTableData, ChessVariant } from '@/utils/types';
+import { OpeningData, OpeningsTableData, ChessVariant } from '../../utils/types';
 import { getOpeningName } from './openingsDatabase';
 import { pgnToFen, extractOpeningName, filterGamesByPlayerColor, cleanMoveSequence } from './chessUtils';
 

@@ -1,5 +1,4 @@
-
-import { PhaseAccuracy, TimeSlotPerformance, DayPerformance, OpeningData } from '@/utils/types';
+import { PhaseAccuracy, TimeSlotPerformance, DayPerformance, OpeningData } from '../../utils/types';
 
 // Extract insights from user's chess data
 export const extractInsights = (data: {

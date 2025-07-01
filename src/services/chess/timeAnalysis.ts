@@ -1,5 +1,4 @@
-
-import { DayPerformance, TimeSlotPerformance } from '@/utils/types';
+import { DayPerformance, TimeSlotPerformance } from '../../utils/types';
 
 // Generate day and time performance data
 export const generateTimeAnalysis = (games: any[]): { 

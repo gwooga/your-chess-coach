@@ -1,5 +1,5 @@
-import { toast } from '@/hooks/use-toast';
-import { TimeRange, Platform } from '@/utils/types';
+import { toast } from '../hooks/use-toast';
+import { TimeRange, Platform } from '../utils/types';
 import { Chess } from 'chess.js';
 
 // Convert period formats

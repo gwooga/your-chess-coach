@@ -1,5 +1,4 @@
-
-import { Rating, Platform } from '@/utils/types';
+import { Rating, Platform } from '../../utils/types';
 
 // Add function to extract ratings from raw game data
 export const extractRatings = (games: any[], platform: Platform): Rating => {

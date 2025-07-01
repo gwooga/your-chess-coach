@@ -1,4 +1,3 @@
-
 import { 
   OpeningData, 
   OpeningsTableData, 
@@ -12,8 +11,8 @@ import {
   UserInfo,
   TimeRange,
   Platform
-} from '@/utils/types';
-import { toast } from '@/hooks/use-toast';
+} from '../utils/types';
+import { toast } from '../hooks/use-toast';
 
 // Import all our modular services
 import { analyzeOpenings } from './chess/openingAnalysis';
