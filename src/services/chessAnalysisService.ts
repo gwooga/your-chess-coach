@@ -12,7 +12,6 @@ import {
   TimeRange,
   Platform
 } from '../utils/types';
-import { toast } from '../hooks/use-toast';
 
 // Import all our modular services
 import { analyzeOpenings } from './chess/openingAnalysis';
@@ -134,11 +133,7 @@ export const analyzeChessData = async (data: {
     return userAnalysis;
   } catch (error) {
     console.error("Error in analyzeChessData:", error);
-    toast({
-      title: "Analysis error",
-      description: "Failed to analyze chess data. Please try again.",
-      variant: "destructive",
-    });
+    console.error('Analysis error: Failed to analyze chess data. Please try again.');
     throw error;
   }
 };
