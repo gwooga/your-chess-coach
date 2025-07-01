@@ -2,7 +2,7 @@ import 'dotenv/config';
 import OpenAI from 'openai';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { parsePgnContent } from '../src/services/pgnDownloadService.js';
-import { analyzeChessData } from '../src/services/chessAnalysisService';
+import { analyzeChessData } from '../src/services/chessAnalysisService.js';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
