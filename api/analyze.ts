@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import OpenAI from 'openai';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { parsePgnContent } from './src/services/pgnDownloadService';
+import { parsePgnContent } from '../src/services/pgnDownloadService';
 import { analyzeChessData } from '../src/services/chessAnalysisService';
 
 const openai = new OpenAI({
