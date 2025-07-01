@@ -1,7 +1,6 @@
-
 import { OpeningData, OpeningsTableData, ChessVariant } from '@/utils/types';
 import { getOpeningName } from './openingsDatabase';
-import { pgnToFen, extractOpeningName, filterGamesByPlayerColor } from './chessUtils';
+import { pgnToFen, extractOpeningName, filterGamesByPlayerColor, cleanMoveSequence } from './chessUtils';
 
 // Analyze opening sequences based on games and user info
 export const analyzeOpenings = (games: any[], username: string): {
@@ -131,7 +130,8 @@ const processGames = (games: any[], sequences: Record<string, any>, color: 'whit
     // Extract sequences of different depths
     [2, 3, 4, 5, 6, 7, 8, 10].forEach(depth => {
       if (movePairs.length >= depth) {
-        const sequenceMovePairs = movePairs.slice(0, depth).join(' ').trim();
+        let sequenceMovePairs = movePairs.slice(0, depth).join(' ').trim();
+        sequenceMovePairs = cleanMoveSequence(sequenceMovePairs); // Clean the sequence
         const sequenceKey = `${color}${depth}`;
         
         // If opening name wasn't found in headers, try to get it from the database

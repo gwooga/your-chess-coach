@@ -1,4 +1,3 @@
-
 import { Chess } from 'chess.js';
 
 // Convert PGN moves to FEN
@@ -209,4 +208,10 @@ export const filterGamesByPlayerColor = (games: any[], username: string, color: 
     
     return false;
   });
+};
+
+// Utility to clean move sequences of clock annotations and curly-brace metadata
+export const cleanMoveSequence = (sequence: string): string => {
+  // Remove all {...} blocks (including clock annotations and comments)
+  return sequence.replace(/\{[^}]*\}/g, '').replace(/\s+/g, ' ').trim();
 };
