@@ -1,74 +1,49 @@
-// Import all ECO JSON files
-import ecoA from '../../data/Openings/ecoA.json';
-import ecoB from '../../data/Openings/ecoB.json';
-import ecoC from '../../data/Openings/ecoC.json';
-import ecoD from '../../data/Openings/ecoD.json';
-import ecoE from '../../data/Openings/ecoE.json';
+import aTsv from '../../data/Openings/a.tsv?raw';
+import bTsv from '../../data/Openings/b.tsv?raw';
+import cTsv from '../../data/Openings/c.tsv?raw';
+import dTsv from '../../data/Openings/d.tsv?raw';
+import eTsv from '../../data/Openings/e.tsv?raw';
 
-// Merge all openings into a single object
-const allOpenings: Record<string, any> = {
-  ...ecoA,
-  ...ecoB,
-  ...ecoC,
-  ...ecoD,
-  ...ecoE,
+// Helper to normalize move sequences: remove move numbers, dots, extra spaces
+function normalizeSequence(pgn: string): string {
+  return pgn
+    .replace(/\d+\./g, '') // remove move numbers
+    .replace(/\s+/g, ' ')   // collapse whitespace
+    .trim();
+}
+
+// Parse a single TSV file into a map: normalized sequence -> name
+function parseTsv(tsv: string): Record<string, string> {
+  const lines = tsv.split('\n');
+  const map: Record<string, string> = {};
+  for (let i = 1; i < lines.length; i++) { // skip header
+    const line = lines[i].trim();
+    if (!line) continue;
+    const [eco, name, pgn] = line.split('\t');
+    if (!name || !pgn) continue;
+    const norm = normalizeSequence(pgn);
+    map[norm] = name;
+  }
+  return map;
+}
+
+// Build the full map from all TSVs
+const openingMap: Record<string, string> = {
+  ...parseTsv(aTsv),
+  ...parseTsv(bTsv),
+  ...parseTsv(cTsv),
+  ...parseTsv(dTsv),
+  ...parseTsv(eTsv),
 };
 
-// Utility to normalize move sequences: remove move numbers, dots, extra spaces
-function normalizeMoveSequence(moves: string): string {
-  // Remove move numbers (e.g., '1.', '2.', etc.) and dots, then trim and collapse spaces
-  return moves.replace(/\d+\.(\s*)/g, '').replace(/\s+/g, ' ').trim();
-}
-
-// Build a map: normalized move sequence => { name, fen, eco, ... }
-const sequenceToOpening: Record<string, { name: string; fen: string; eco?: string }> = {};
-for (const [fen, data] of Object.entries(allOpenings)) {
-  if (data && data.moves && data.name) {
-    const normSeq = normalizeMoveSequence(data.moves);
-    // Only keep the longest sequence for a given prefix (most specific)
-    if (!sequenceToOpening[normSeq] || (normSeq.length > sequenceToOpening[normSeq].fen?.length)) {
-      sequenceToOpening[normSeq] = { name: data.name, fen, eco: data.eco };
-    }
-  }
-}
-
-/**
- * Get the opening name by normalized move sequence, with prefix fallback.
- * @param sequence The move sequence (e.g., 'e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nc6 Nc3 g6')
- * @returns The opening name, or 'Unknown Opening' if not found
- */
 export function getOpeningNameBySequence(sequence: string): string {
-  let normSeq = normalizeMoveSequence(sequence);
-  // Try exact match first
-  if (sequenceToOpening[normSeq]) {
-    return sequenceToOpening[normSeq].name;
-  }
-  // Prefix fallback: remove moves from the end one by one
-  let movesArr = normSeq.split(' ');
-  while (movesArr.length > 2) { // Don't go below 2 moves
-    movesArr.pop();
-    const prefix = movesArr.join(' ');
-    if (sequenceToOpening[prefix]) {
-      return sequenceToOpening[prefix].name;
-    }
-  }
-  return 'Unknown Opening';
-}
-
-/**
- * Get the opening name by FEN from the merged database.
- * @param fen The FEN string (should match the key format in the database)
- * @returns The opening name, or 'Unknown Opening' if not found
- */
-export function getOpeningNameByFEN(fen: string): string {
-  // The FEN in the database may not include move counters, so try both full and partial matches
-  if (fen in allOpenings && allOpenings[fen]?.name) {
-    return allOpenings[fen].name;
-  }
-  // Try matching only the first 6 fields (ignore move counters)
-  const fen6 = fen.split(' ').slice(0, 6).join(' ');
-  if (fen6 in allOpenings && allOpenings[fen6]?.name) {
-    return allOpenings[fen6].name;
+  const norm = normalizeSequence(sequence);
+  if (openingMap[norm]) return openingMap[norm];
+  // Prefix fallback: try shorter and shorter prefixes
+  const moves = norm.split(' ');
+  for (let i = moves.length - 1; i > 1; i--) {
+    const prefix = moves.slice(0, i).join(' ');
+    if (openingMap[prefix]) return openingMap[prefix];
   }
   return 'Unknown Opening';
 }

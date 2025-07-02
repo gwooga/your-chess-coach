@@ -1,8 +1,8 @@
-
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { OpeningData, PhaseAccuracy, UserAnalysis } from '@/utils/types';
 import { CheckCircle, AlertTriangle, BookOpen, Trophy } from "lucide-react";
+import { getOpeningNameBySequence } from '@/services/chess/openingsDatabase';
 
 interface CoachSummaryProps {
   analysis: UserAnalysis;
@@ -59,8 +59,8 @@ const CoachSummary: React.FC<CoachSummaryProps> = ({
                 <h2 className="text-xl font-bold mb-2">Personal Coaching Report</h2>
                 <p className="text-gray-700 leading-relaxed">
                   {getTimeRangeDescription()}, your {winRate}% win rate shows {winRate > 55 ? "strong" : winRate > 45 ? "solid" : "developing"} skills. 
-                  {topWhiteOpening ? ` As White, the ${topWhiteOpening.name} is your strongest opening with a ${topWhiteOpening.winsPercentage}% win rate over ${topWhiteOpening.games} games.` : ""} 
-                  {topBlackOpening ? ` Playing Black, you achieve your best results with the ${topBlackOpening.name} (${topBlackOpening.winsPercentage}% wins over ${topBlackOpening.games} games).` : ""} 
+                  {topWhiteOpening ? ` As White, the ${getOpeningNameBySequence(topWhiteOpening.sequence)} is your strongest opening with a ${topWhiteOpening.winsPercentage}% win rate over ${topWhiteOpening.games} games.` : ""} 
+                  {topBlackOpening ? ` Playing Black, you achieve your best results with the ${getOpeningNameBySequence(topBlackOpening.sequence)} (${topBlackOpening.winsPercentage}% wins over ${topBlackOpening.games} games).` : ""} 
                   {bestPhase ? ` Your ${bestPhase.name.toLowerCase()} phase is your strongest (${bestPhase.value}% accuracy), ` : ""}
                   {worstPhase ? `while your ${worstPhase.name.toLowerCase()} phase (${worstPhase.value}% accuracy) needs more focus. ` : ""}
                   {analysis.conversionRate ? `Your advantage conversion rate of ${analysis.conversionRate}% when ahead in material ${analysis.conversionRate > 70 ? "is excellent" : analysis.conversionRate > 60 ? "is solid" : "needs improvement"}. ` : ""}
@@ -85,12 +85,12 @@ const CoachSummary: React.FC<CoachSummaryProps> = ({
                 ))}
                 {topWhiteOpening && (
                   <li className="text-gray-700">
-                    Strong results with {topWhiteOpening.name} as White ({topWhiteOpening.winsPercentage}% win rate over {topWhiteOpening.games} games)
+                    Strong results with {getOpeningNameBySequence(topWhiteOpening.sequence)} as White ({topWhiteOpening.winsPercentage}% win rate over {topWhiteOpening.games} games)
                   </li>
                 )}
                 {topBlackOpening && (
                   <li className="text-gray-700">
-                    Effective use of {topBlackOpening.name} as Black ({topBlackOpening.winsPercentage}% win rate over {topBlackOpening.games} games)
+                    Effective use of {getOpeningNameBySequence(topBlackOpening.sequence)} as Black ({topBlackOpening.winsPercentage}% win rate over {topBlackOpening.games} games)
                   </li>
                 )}
               </ul>

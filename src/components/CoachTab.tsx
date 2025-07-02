@@ -46,7 +46,7 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
         Object.keys(openingsData).forEach(key => {
           if (Array.isArray(openingsData[key])) {
             openingsData[key].forEach((opening: any) => {
-              if (opening && opening.name) names.add(opening.name);
+              if (opening && opening.sequence) names.add(getOpeningNameBySequence(opening.sequence));
             });
           }
         });

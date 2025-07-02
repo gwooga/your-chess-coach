@@ -18,7 +18,7 @@ import ChessBoard from './ChessBoard';
 import { OpeningData } from '@/utils/types';
 import { ArrowDown, ArrowUp, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { getOpeningNameByFEN } from '@/services/chess/openingsDatabase';
+import { getOpeningNameBySequence } from '@/services/chess/openingsDatabase';
 
 interface MeaningfulOpeningsTableProps {
   data: OpeningData[];
@@ -143,7 +143,7 @@ const MeaningfulOpeningsTable: React.FC<MeaningfulOpeningsTableProps> = ({ data,
               <TableCell className="font-medium">
                 {opening.color?.charAt(0).toUpperCase() + opening.color?.slice(1) || '-'}
               </TableCell>
-              <TableCell className="font-medium">{getOpeningNameByFEN(opening.fen)}</TableCell>
+              <TableCell className="font-medium">{getOpeningNameBySequence(opening.sequence)}</TableCell>
               <TableCell className="font-mono text-xs">{formatSequence(opening.sequence)}</TableCell>
               <TableCell>{opening.games} ({opening.gamesPercentage}%)</TableCell>
               <TableCell className="font-medium" style={{color: 'rgb(22 163 74)'}}>{opening.winsPercentage}%</TableCell>

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { OpeningsTableData } from '@/utils/types';
@@ -7,6 +6,7 @@ import { CheckCircle } from "lucide-react";
 import MeaningfulOpeningsTable from '../MeaningfulOpeningsTable';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import OpeningSummary from '../OpeningSummary';
+import { getOpeningNameBySequence } from '@/services/chess/openingsDatabase';
 
 interface CoachOpeningsProps {
   variantData: OpeningsTableData;
@@ -71,7 +71,7 @@ const CoachOpenings: React.FC<CoachOpeningsProps> = ({ variantData, totalGames, 
                   <TableBody>
                     {(variantData.white3 || []).slice(0, 5).map((opening, index) => (
                       <TableRow key={index}>
-                        <TableCell className="font-medium">{opening.name}</TableCell>
+                        <TableCell className="font-medium">{getOpeningNameBySequence(opening.sequence)}</TableCell>
                         <TableCell>{opening.games} ({opening.gamesPercentage}%)</TableCell>
                         <TableCell className={opening.winsPercentage > 55 ? "text-green-600 font-medium" : ""}>{opening.winsPercentage}%</TableCell>
                       </TableRow>
@@ -106,7 +106,7 @@ const CoachOpenings: React.FC<CoachOpeningsProps> = ({ variantData, totalGames, 
                   <TableBody>
                     {(variantData.black3 || []).slice(0, 5).map((opening, index) => (
                       <TableRow key={index}>
-                        <TableCell className="font-medium">{opening.name}</TableCell>
+                        <TableCell className="font-medium">{getOpeningNameBySequence(opening.sequence)}</TableCell>
                         <TableCell>{opening.games} ({opening.gamesPercentage}%)</TableCell>
                         <TableCell className={opening.winsPercentage > 50 ? "text-green-600 font-medium" : ""}>{opening.winsPercentage}%</TableCell>
                       </TableRow>
