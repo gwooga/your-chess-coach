@@ -1,8 +1,8 @@
-
 import React, { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { OpeningData } from '@/utils/types';
 import ChessBoard from './ChessBoard';
+import { getOpeningNameBySequence } from '@/services/chess/openingsDatabase';
 
 interface OpeningSummaryTableProps {
   rootLine: OpeningData;
@@ -20,13 +20,8 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
   const [selectedLine, setSelectedLine] = useState<OpeningData>(rootLine);
   
   // Format opening name to be more concise
-  const formatOpeningName = (name: string) => {
-    // Take just the opening and first sub-label if present
-    const parts = name.split(':');
-    if (parts.length > 1) {
-      return parts[0].trim();
-    }
-    return name;
+  const formatOpeningName = (sequence: string) => {
+    return getOpeningNameBySequence(sequence);
   };
   
   // Function to format win/draw/loss percentages
@@ -48,7 +43,7 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
     
     return (
       <>
-        {formatOpeningName(rootLine.name)}: '{rootLine.sequence}' (
+        {formatOpeningName(rootLine.sequence)}: '{rootLine.sequence}' (
         <span style={colorStyle}>{colorDisplay}</span>
         )
       </>
@@ -77,7 +72,7 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
                 className="font-medium bg-gray-100 hover:bg-gray-200"
                 onMouseEnter={() => setSelectedLine(rootLine)}
               >
-                <TableCell>{formatOpeningName(rootLine.name)}</TableCell>
+                <TableCell>{formatOpeningName(rootLine.sequence)}</TableCell>
                 <TableCell>{rootLine.sequence}</TableCell>
                 <TableCell>{formatGamesCount(rootLine.games, totalGames)}</TableCell>
                 <TableCell style={{color: 'rgb(22 163 74)'}}>{formatPercentage(rootLine.winsPercentage)}</TableCell>
@@ -91,7 +86,7 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
                   key={index}
                   onMouseEnter={() => setSelectedLine(line)}
                 >
-                  <TableCell>{formatOpeningName(line.name)}</TableCell>
+                  <TableCell>{formatOpeningName(line.sequence)}</TableCell>
                   <TableCell>{line.sequence}</TableCell>
                   <TableCell>{formatGamesCount(line.games, totalGames)}</TableCell>
                   <TableCell style={{color: 'rgb(22 163 74)'}}>{formatPercentage(line.winsPercentage)}</TableCell>
@@ -120,7 +115,7 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
               <p>Your win rate of {Math.round(rootLine.winsPercentage)}% suggests you may need to review your approach to this opening.</p>
             }
             <p>
-              Consider watching instructional videos on key tactical themes in the {rootLine.name} to improve your understanding of the resulting positions.
+              Consider watching instructional videos on key tactical themes in the {formatOpeningName(rootLine.sequence)} to improve your understanding of the resulting positions.
             </p>
             <p>
               Practice the common tactical motifs that arise from this structure to build pattern recognition and increase your win rate.
