@@ -17,6 +17,7 @@ function parseBasicStats(pgn: string) {
   const games = pgn.split(/\n\n(?=\[Event )/g).filter(g => g.trim());
   let openingCounts: Record<string, number> = {};
   let win = 0, loss = 0, draw = 0;
+  const openingsList: string[] = [];
   for (const gameText of games) {
     try {
       const chess = new Chess();
@@ -25,6 +26,7 @@ function parseBasicStats(pgn: string) {
       // Opening
       const opening = headers.Opening || 'Unknown';
       openingCounts[opening] = (openingCounts[opening] || 0) + 1;
+      openingsList.push(opening);
       // Result
       if (headers.Result === '1-0') win++;
       else if (headers.Result === '0-1') loss++;
@@ -42,6 +44,7 @@ function parseBasicStats(pgn: string) {
     draw,
     mostCommonOpening,
     openingCounts,
+    openingsList,
   };
 }
 

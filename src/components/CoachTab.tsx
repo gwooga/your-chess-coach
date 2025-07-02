@@ -21,6 +21,8 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
   const [aiReport, setAiReport] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [openingsList, setOpeningsList] = useState<string[]>([]);
+  const [relevantOpenings, setRelevantOpenings] = useState<string[]>([]);
   
   // --- Caching logic ---
   // Create a key based on the relevant data
@@ -28,15 +30,40 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
   // Ref to store last key and report
   const lastKeyRef = useRef<string | null>(null);
   const lastReportRef = useRef<string | null>(null);
+  const lastOpeningsListRef = useRef<string[] | null>(null);
+  const lastRelevantOpeningsRef = useRef<string[] | null>(null);
   
   // Get variant-specific data
   const variantData = analysis.openings[variant];
   
+  // Helper to extract all unique opening names from the tables for the four main variants
+  function extractRelevantOpenings(analysis: any): string[] {
+    const variants: ChessVariant[] = ['all', 'blitz', 'rapid', 'bullet'];
+    const names = new Set<string>();
+    variants.forEach(variant => {
+      const openingsData = analysis.openings?.[variant];
+      if (openingsData) {
+        Object.keys(openingsData).forEach(key => {
+          if (Array.isArray(openingsData[key])) {
+            openingsData[key].forEach((opening: any) => {
+              if (opening && opening.name) names.add(opening.name);
+            });
+          }
+        });
+      }
+    });
+    return Array.from(names);
+  }
+
   // Fetch AI report only if analysisKey changes
   useEffect(() => {
     if (activeSection !== 'summary') return;
+    const extracted = extractRelevantOpenings(analysis);
+    setRelevantOpenings(extracted);
     if (lastKeyRef.current === analysisKey && lastReportRef.current) {
       setAiReport(lastReportRef.current);
+      setOpeningsList(lastOpeningsListRef.current || []);
+      setRelevantOpenings(lastRelevantOpeningsRef.current || []);
       setLoading(false);
       setError(null);
       return;
@@ -54,6 +81,7 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
             username,
             platform,
             average_rating,
+            relevantOpenings: extracted,
             openings_stats: JSON.stringify(analysis.openings),
             other_stats: JSON.stringify({
               strengths: analysis.strengths,
@@ -69,8 +97,12 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
         if (!res.ok) throw new Error('Failed to fetch AI report');
         const data = await res.json();
         setAiReport(data.report);
+        setOpeningsList(data.summary.openingsList || []);
+        setRelevantOpenings(extracted);
         lastKeyRef.current = analysisKey;
         lastReportRef.current = data.report;
+        lastOpeningsListRef.current = data.summary.openingsList || [];
+        lastRelevantOpeningsRef.current = extracted;
       } catch (err: any) {
         setError(err.message || 'Unknown error');
       } finally {
