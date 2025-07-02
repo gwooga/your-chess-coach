@@ -19,25 +19,21 @@ interface CoachTabProps {
 
 const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platform, pgn, average_rating }) => {
   const [activeSection, setActiveSection] = useState<string>("summary");
-  const [aiReport, setAiReport] = useState<string | null>(null);
+  const [coachSummary, setCoachSummary] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openingsList, setOpeningsList] = useState<string[]>([]);
   const [relevantOpenings, setRelevantOpenings] = useState<string[]>([]);
   
   // --- Caching logic ---
-  // Create a key based on the relevant data
   const analysisKey = JSON.stringify({ pgn, username, platform, average_rating });
-  // Ref to store last key and report
   const lastKeyRef = useRef<string | null>(null);
-  const lastReportRef = useRef<string | null>(null);
+  const lastSummaryRef = useRef<any | null>(null);
   const lastOpeningsListRef = useRef<string[] | null>(null);
   const lastRelevantOpeningsRef = useRef<string[] | null>(null);
   
-  // Get variant-specific data
   const variantData = analysis.openings[variant];
   
-  // Helper to extract all unique opening names from the tables for the four main variants
   function extractRelevantOpenings(analysis: any): string[] {
     const variants: ChessVariant[] = ['all', 'blitz', 'rapid', 'bullet'];
     const names = new Set<string>();
@@ -56,23 +52,22 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
     return Array.from(names);
   }
 
-  // Fetch AI report only if analysisKey changes
   useEffect(() => {
     if (activeSection !== 'summary') return;
     const extracted = extractRelevantOpenings(analysis);
     setRelevantOpenings(extracted);
-    if (lastKeyRef.current === analysisKey && lastReportRef.current) {
-      setAiReport(lastReportRef.current);
+    if (lastKeyRef.current === analysisKey && lastSummaryRef.current) {
+      setCoachSummary(lastSummaryRef.current);
       setOpeningsList(lastOpeningsListRef.current || []);
       setRelevantOpenings(lastRelevantOpeningsRef.current || []);
       setLoading(false);
       setError(null);
       return;
     }
-    const fetchAIReport = async () => {
+    const fetchCoachSummary = async () => {
       setLoading(true);
       setError(null);
-      setAiReport(null);
+      setCoachSummary(null);
       try {
         const res = await fetch('/api/analyze', {
           method: 'POST',
@@ -97,12 +92,12 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
         });
         if (!res.ok) throw new Error('Failed to fetch AI report');
         const data = await res.json();
-        setAiReport(data.report);
-        setOpeningsList(data.summary.openingsList || []);
+        setCoachSummary(data.summary);
+        setOpeningsList(data.summary?.openingsList || []);
         setRelevantOpenings(extracted);
         lastKeyRef.current = analysisKey;
-        lastReportRef.current = data.report;
-        lastOpeningsListRef.current = data.summary.openingsList || [];
+        lastSummaryRef.current = data.summary;
+        lastOpeningsListRef.current = data.summary?.openingsList || [];
         lastRelevantOpeningsRef.current = extracted;
       } catch (err: any) {
         setError(err.message || 'Unknown error');
@@ -110,23 +105,8 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
         setLoading(false);
       }
     };
-    fetchAIReport();
+    fetchCoachSummary();
   }, [activeSection, analysisKey, analysis]);
-
-  // Helper to render the AI report in sections
-  const renderAISections = (report: string) => {
-    // Simple split by section headers (improve as needed)
-    const sections = report.split(/\n(?=\d+\.|Coach Analysis|Strengths|Areas to Improve|Study Recommendations)/g);
-    return (
-      <div className="space-y-8 mb-8">
-        {sections.map((section, idx) => (
-          <div key={idx} className="bg-slate-50 p-6 rounded-lg border border-slate-200">
-            <div className="prose max-w-none" style={{ whiteSpace: 'pre-wrap' }}>{section.trim()}</div>
-          </div>
-        ))}
-      </div>
-    );
-  };
 
   return (
     <div className="space-y-8">
@@ -137,7 +117,6 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
           analysis={analysis}
         />
       </div>
-      
       {/* Coach Tab Navigation */}
       <div className="mb-6">
         <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full">
@@ -145,24 +124,21 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
             <TabsTrigger value="summary">Coach's Summary</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
           </TabsList>
-          
           {/* Coach's Summary Content */}
           <TabsContent value="summary" className="mt-6">
             {loading && <div className="mb-4">Loading AI coaching report...</div>}
             {error && <div className="mb-4 text-red-500">{error}</div>}
-            {aiReport && renderAISections(aiReport)}
-            <CoachSummary 
-              analysis={analysis} 
-              topWhiteOpening={variantData.meaningfulWhite?.[0] || null}
-              topBlackOpening={variantData.meaningfulBlack?.[0] || null}
-              winRate={0} // This will be calculated in CoachSummary
-              totalGames={0} // This will be calculated in CoachSummary
-            />
-            
+            {coachSummary && (
+              <CoachSummary 
+                personalReport={coachSummary.personal_report}
+                strengths={coachSummary.strengths}
+                areasToImprove={coachSummary.areas_to_improve}
+                studyRecommendations={coachSummary.study_recommendations}
+              />
+            )}
             {/* Add the Ask Me Anything Section */}
             <ChessAdviser analysis={analysis} />
           </TabsContent>
-          
           {/* Performance Content */}
           <TabsContent value="performance" className="mt-6 space-y-8">
             <CoachPerformance 
