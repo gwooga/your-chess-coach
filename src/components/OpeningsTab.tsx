@@ -39,6 +39,13 @@ const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings, analy
   
   const totalGames = data.totalWhiteGames + data.totalBlackGames;
   
+  const getAverageRating = (ratings: any) => {
+    if (!ratings) return 0;
+    const values = Object.values(ratings).filter((v) => typeof v === 'number');
+    if (values.length === 0) return 0;
+    return Math.round(values.reduce((a, b) => a + (b as number), 0) / values.length);
+  };
+  
   return (
     <div className="space-y-6">
       <div className="mb-6">
@@ -57,7 +64,7 @@ const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings, analy
         
         {/* Summary Tab Content */}
         <TabsContent value="summary" className="mt-0">
-          <OpeningSummary data={data} variant={variant} />
+          <OpeningSummary data={data} variant={variant} rating={getAverageRating(ratings)} />
         </TabsContent>
         
         {/* Full Breakdown Tab Content */}

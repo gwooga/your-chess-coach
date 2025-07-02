@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { OpeningsTableData, ChessVariant } from '@/utils/types';
 import OpeningSummaryTable from './OpeningSummaryTable';
@@ -6,9 +5,10 @@ import OpeningSummaryTable from './OpeningSummaryTable';
 interface OpeningSummaryProps {
   data: OpeningsTableData;
   variant: ChessVariant;
+  rating: number;
 }
 
-const OpeningSummary: React.FC<OpeningSummaryProps> = ({ data, variant }) => {
+const OpeningSummary: React.FC<OpeningSummaryProps> = ({ data, variant, rating }) => {
   // Function to extract root lines that meet criteria (>= 5% of games)
   const extractRootLines = (colorData: any[], totalGames: number, color: 'white' | 'black') => {
     if (!colorData || !Array.isArray(colorData)) return [];
@@ -119,6 +119,7 @@ const OpeningSummary: React.FC<OpeningSummaryProps> = ({ data, variant }) => {
             childLines={table.children}
             tableNumber={index + 1}
             totalGames={table.totalGames}
+            rating={rating}
           />
         ))
       ) : (

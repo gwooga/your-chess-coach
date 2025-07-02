@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { OpeningData } from '@/utils/types';
 import ChessBoard from './ChessBoard';
@@ -9,16 +9,71 @@ interface OpeningSummaryTableProps {
   childLines: OpeningData[];
   tableNumber: number;
   totalGames: number;
+  rating: number;
 }
+
+const notesCache: Record<string, string> = {};
 
 const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({ 
   rootLine, 
   childLines, 
   tableNumber,
-  totalGames 
+  totalGames,
+  rating
 }) => {
   const [selectedLine, setSelectedLine] = useState<OpeningData>(rootLine);
-  
+  const [coachNotes, setCoachNotes] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Prepare table data for API
+  const tableData = [rootLine, ...childLines].map(line => ({
+    Opening: getOpeningNameBySequence(line.sequence),
+    Sequence: line.sequence,
+    'Games (N)': line.games,
+    'Wins (%)': Math.round(line.winsPercentage ?? 0),
+    'Draws (%)': Math.round(line.drawsPercentage ?? 0),
+    'Losses (%)': Math.round(line.lossesPercentage ?? 0),
+  }));
+  const cacheKey = JSON.stringify({ tableData, rating });
+
+  useEffect(() => {
+    let cancelled = false;
+    if (notesCache[cacheKey]) {
+      setCoachNotes(notesCache[cacheKey]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setCoachNotes('');
+    fetch('/api/coachNotes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: tableData, rating }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (!cancelled) {
+          if (data.notes) {
+            notesCache[cacheKey] = data.notes;
+            setCoachNotes(data.notes);
+            setError(null);
+          } else {
+            setError(data.error || 'No notes returned');
+          }
+        }
+      })
+      .catch(err => {
+        if (!cancelled) setError(err.message || 'Failed to fetch coach notes');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [cacheKey]);
+
   // Format opening name to be more concise
   const formatOpeningName = (sequence: string) => {
     return getOpeningNameBySequence(sequence);
@@ -102,24 +157,11 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
         <div className="mt-4 p-4 bg-white border rounded-lg">
           <h4 className="text-md font-semibold mb-2">Coach's notes</h4>
           <div className="space-y-2" style={{color: 'rgb(75 85 99)'}}>
-            <p>
-              {rootLine.color === 'white' 
-                ? `This opening appears in ${rootLine.gamesPercentage?.toFixed(1)}% of your White games, making it a significant part of your repertoire.` 
-                : `This opening appears in ${rootLine.gamesPercentage?.toFixed(1)}% of your Black games, making it a significant part of your repertoire.`
-              }
-            </p>
-            {rootLine.winsPercentage && rootLine.winsPercentage > 60 && 
-              <p>Your win rate of {Math.round(rootLine.winsPercentage)}% with this opening is excellent. Continue to explore and deepen your understanding of these positions.</p>
-            }
-            {rootLine.winsPercentage && rootLine.winsPercentage < 45 && 
-              <p>Your win rate of {Math.round(rootLine.winsPercentage)}% suggests you may need to review your approach to this opening.</p>
-            }
-            <p>
-              Consider watching instructional videos on key tactical themes in the {formatOpeningName(rootLine.sequence)} to improve your understanding of the resulting positions.
-            </p>
-            <p>
-              Practice the common tactical motifs that arise from this structure to build pattern recognition and increase your win rate.
-            </p>
+            {loading && <p>Loading coach's notes...</p>}
+            {error && <p className="text-red-500">{error}</p>}
+            {!loading && !error && coachNotes && (
+              <p style={{whiteSpace: 'pre-line'}}>{coachNotes}</p>
+            )}
           </div>
         </div>
       </div>
