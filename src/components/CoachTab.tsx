@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ChessAdviser from './ChessAdviser';
 import CoachSummary from './coach/CoachSummary';
 import CoachPerformance from './coach/CoachPerformance';
+import { getOpeningNameBySequence } from '@/services/chess/openingsDatabase';
 
 interface CoachTabProps {
   analysis: UserAnalysis;
