@@ -159,8 +159,12 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
           <div className="space-y-2" style={{color: 'rgb(75 85 99)'}}>
             {loading && <p>Loading coach's notes...</p>}
             {error && <p className="text-red-500">{error}</p>}
-            {!loading && !error && coachNotes && (
-              <p style={{whiteSpace: 'pre-line'}}>{coachNotes}</p>
+            {!loading && !error && Array.isArray(coachNotes) && coachNotes.length > 0 && (
+              <div>
+                {coachNotes.map((sentence: string, idx: number) => (
+                  <p key={idx}>{sentence}</p>
+                ))}
+              </div>
             )}
           </div>
         </div>
