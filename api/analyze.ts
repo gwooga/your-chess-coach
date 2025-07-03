@@ -63,15 +63,39 @@ export default async function handler(
   }
 
   // Accept all relevant data from the request
-  const { pgn, username, platform, average_rating, relevantOpenings, openings_stats, other_stats } = request.body || {};
+  const { username, platform, average_rating, relevantOpenings, openings_stats, other_stats } = request.body || {};
 
-  if (!pgn || !username) {
-    response.status(400).json({ error: 'Missing PGN or username.' });
+  if (!username) {
+    response.status(400).json({ error: 'Missing username.' });
     return;
   }
 
-  // Compose the new prompt
-  const prompt = `You are a world-class chess coach. You will be provided with a detailed summary of a student's real chess data, including their rating, recent game statistics, opening performance tables, and the full PGN of their games.\n\nYour task:\nBased on all the data provided, generate a JSON object with the following four fields:\n\n---\n\n### Personal Coaching Report  \n- Summarize the highest-share openings and any striking score gaps.  \n- Mention game-length disparity and any optional blunder/clock stats.  \n- For example:  \n  - Extract **3-4 highest-share lines** from Top20 (using the gamesShare field).  \n  - Note any line where Win% or Loss% deviates by ≥10 points from 50%.  \n  - Mention average move-length difference and any auxiliary clock/blunder stat if available.\n\n### Strengths  \n- List 2-3 positive patterns (e.g., "wide repertoire", "good gambit score").  \n- For example:  \n  - A line with Win% ≥ 55% and ≥3% share  \n  - High endgame save-rate (if draw% in lost positions is high)  \n  - Repertoire breadth if no single line >20%\n\n### Areas to Improve  \n- Numbered list (3-4 items).  \n- Tie each item to real stats (e.g., "–11 vs 4.Bc4 in Classical Sicilian").  \n- For example:  \n  - Lines with Loss% ≥ 55% and ≥3% share  \n  - Any huge share line (≥10%) that is only break-even  \n  - Clock or blunder issue if computed\n\n### Study Recommendations  \n- In bullet points, write Focus, Drill, and Rationale.  \n- Tailor drills to the **ratingBand** (see mapping below, do NOT mention the band explicitly).  \n- Link each drill back to an Area-to-Improve item.\n\n**Rating band mapping:**  \n- 600-800  → basics (tactics, mate-in-one, piece safety)  \n- 801-1000 → fundamental tactics + simple openings  \n- 1001-1200 → intermediate tactics, basic endgames  \n- 1201-1400 → opening ideas, opposition endgames, time use  \n- 1401-1600 → positional themes, anti-sideline prep, clock discipline  \n- 1601-1800 → deep opening patch, rook endings, calculation method  \n- 1801-2000 → advanced structures, prophylaxis, targeted engine prep  \n- 2001-2200+ → novelties, long strategic plans, psychological edges\n\n**Instructions:**  \n- Do not repeat the raw stats or tables in your output—summarize and interpret them.\n- Adapt your language complexity to the student's rating range (from their rating up to rating+100).\n- Return only a valid JSON object in your response, with the four fields described above.\n\n**Student data:**\n- Username: ${username}\n- Platform: ${platform}\n- Rating: ${average_rating}\n- Relevant Openings: ${JSON.stringify(relevantOpenings, null, 2)}\n- Openings Stats: ${openings_stats}\n- Other Stats: ${other_stats}\n- PGN: ${pgn.substring(0, 2000)}${pgn.length > 2000 ? '\n...PGN truncated for length...' : ''}`;
+  // Parse openings_stats to extract breakdown by game type
+  let openingsStatsObj = {};
+  try {
+    openingsStatsObj = JSON.parse(openings_stats);
+  } catch (e) {
+    // fallback: send as string
+    openingsStatsObj = openings_stats;
+  }
+  // Calculate total games by type
+  let gameTypeBreakdown = '';
+  if (typeof openingsStatsObj === 'object' && openingsStatsObj !== null) {
+    const types = ['all', 'blitz', 'rapid', 'bullet', 'classical'];
+    gameTypeBreakdown = types
+      .map(type => {
+        const variant = openingsStatsObj[type];
+        if (variant && typeof variant.totalGames === 'number') {
+          return `${type.charAt(0).toUpperCase() + type.slice(1)}: ${variant.totalGames}`;
+        }
+        return null;
+      })
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  // Compose the new prompt (no PGN)
+  const prompt = `You are a world-class chess coach. You will be provided with a detailed summary of a student's real chess data, including their rating, recent game statistics, and opening performance tables.\n\nYour task:\nBased on all the data provided, generate a JSON object with the following four fields:\n\n---\n\n### Personal Coaching Report  \n- Summarize the highest-share openings and any striking score gaps.  \n- Mention game-length disparity and any optional blunder/clock stats.  \n- For example:  \n  - Extract **3-4 highest-share lines** from Top20 (using the gamesShare field).  \n  - Note any line where Win% or Loss% deviates by ≥10 points from 50%.  \n  - Mention average move-length difference and any auxiliary clock/blunder stat if available.\n\n### Strengths  \n- List 2-3 positive patterns (e.g., "wide repertoire", "good gambit score").  \n- For example:  \n  - A line with Win% ≥ 55% and ≥3% share  \n  - High endgame save-rate (if draw% in lost positions is high)  \n  - Repertoire breadth if no single line >20%\n\n### Areas to Improve  \n- Numbered list (3-4 items).  \n- Tie each item to real stats (e.g., "–11 vs 4.Bc4 in Classical Sicilian").  \n- For example:  \n  - Lines with Loss% ≥ 55% and ≥3% share  \n  - Any huge share line (≥10%) that is only break-even  \n  - Clock or blunder issue if computed\n\n### Study Recommendations  \n- In bullet points, write Focus, Drill, and Rationale.  \n- Tailor drills to the **ratingBand** (see mapping below, do NOT mention the band explicitly).  \n- Link each drill back to an Area-to-Improve item.\n\n**Rating band mapping:**  \n- 600-800  → basics (tactics, mate-in-one, piece safety)  \n- 801-1000 → fundamental tactics + simple openings  \n- 1001-1200 → intermediate tactics, basic endgames  \n- 1201-1400 → opening ideas, opposition endgames, time use  \n- 1401-1600 → positional themes, anti-sideline prep, clock discipline  \n- 1601-1800 → deep opening patch, rook endings, calculation method  \n- 1801-2000 → advanced structures, prophylaxis, targeted engine prep  \n- 2001-2200+ → novelties, long strategic plans, psychological edges\n\n**Instructions:**  \n- Do not repeat the raw stats or tables in your output—summarize and interpret them.\n- Adapt your language complexity to the student's rating range (from their rating up to rating+100).\n- Return only a valid JSON object in your response, with the four fields described above.\n\n**Student data:**\n- Username: ${username}\n- Platform: ${platform}\n- Rating: ${average_rating}\n- Total Games Breakdown: ${gameTypeBreakdown}\n- Relevant Openings: ${JSON.stringify(relevantOpenings, null, 2)}\n- Openings Stats: ${openings_stats}\n- Other Stats: ${other_stats}`;
 
   try {
     const completion = await openai.chat.completions.create({
