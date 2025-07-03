@@ -52,6 +52,35 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
     return Array.from(names);
   }
 
+  // Helper to extract only the summary tables (max 10 tables per variant, max 10 rows per table)
+  function getSummaryTables(openings: Record<ChessVariant, any>) {
+    const variants: ChessVariant[] = ['all', 'blitz', 'rapid', 'bullet'];
+    const result: Record<string, any> = {};
+    for (const variant of variants) {
+      if (!openings[variant]) continue;
+      result[variant] = {};
+      // List the table keys you want (edit as needed)
+      const tableKeys = [
+        'white2', 'black2', 'white3', 'black3', 'white4', 'black4', 'white5', 'black5',
+        'white6', 'black6', 'white7', 'black7', 'white8', 'black8', 'white10', 'black10',
+        'meaningfulWhite', 'meaningfulBlack', 'meaningfulCombined'
+      ];
+      for (const key of tableKeys) {
+        if (Array.isArray(openings[variant][key])) {
+          result[variant][key] = openings[variant][key].slice(0, 10);
+        }
+      }
+      // Optionally include totals/insights if you use them in the UI
+      if (typeof openings[variant].totalWhiteGames === 'number')
+        result[variant].totalWhiteGames = openings[variant].totalWhiteGames;
+      if (typeof openings[variant].totalBlackGames === 'number')
+        result[variant].totalBlackGames = openings[variant].totalBlackGames;
+      if (Array.isArray(openings[variant].insights))
+        result[variant].insights = openings[variant].insights;
+    }
+    return result;
+  }
+
   useEffect(() => {
     const extracted = extractRelevantOpenings(analysis);
     setRelevantOpenings(extracted);
@@ -68,6 +97,7 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
       setError(null);
       setCoachSummary(null);
       try {
+        const summaryTables = getSummaryTables(analysis.openings);
         const res = await fetch('/api/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -77,7 +107,7 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
             platform,
             average_rating,
             relevantOpenings: extracted,
-            openings_stats: JSON.stringify(analysis.openings),
+            openings_stats: JSON.stringify(summaryTables),
             other_stats: JSON.stringify({
               strengths: analysis.strengths,
               weaknesses: analysis.weaknesses,
