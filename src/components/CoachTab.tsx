@@ -53,7 +53,6 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
   }
 
   useEffect(() => {
-    if (activeSection !== 'summary') return;
     const extracted = extractRelevantOpenings(analysis);
     setRelevantOpenings(extracted);
     if (lastKeyRef.current === analysisKey && lastSummaryRef.current) {
@@ -106,7 +105,7 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
       }
     };
     fetchCoachSummary();
-  }, [activeSection, analysisKey, analysis]);
+  }, [analysisKey, analysis]);
 
   return (
     <div className="space-y-8">
