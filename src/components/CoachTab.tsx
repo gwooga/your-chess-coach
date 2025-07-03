@@ -98,25 +98,29 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
       setCoachSummary(null);
       try {
         const summaryTables = getSummaryTables(analysis.openings);
+        const payload = {
+          username,
+          platform,
+          average_rating,
+          relevantOpenings: extracted,
+          openings_stats: JSON.stringify(summaryTables),
+          other_stats: JSON.stringify({
+            strengths: analysis.strengths,
+            weaknesses: analysis.weaknesses,
+            recommendations: analysis.recommendations,
+            phaseAccuracy: analysis.phaseAccuracy,
+            timePerformance: analysis.timePerformance,
+            dayPerformance: analysis.dayPerformance,
+            conversionRate: analysis.conversionRate,
+          })
+        };
+        console.log('Payload size (bytes):', JSON.stringify(payload).length);
+        console.log('openings_stats size:', payload.openings_stats.length);
+        console.log('other_stats size:', payload.other_stats.length);
         const res = await fetch('/api/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username,
-            platform,
-            average_rating,
-            relevantOpenings: extracted,
-            openings_stats: JSON.stringify(summaryTables),
-            other_stats: JSON.stringify({
-              strengths: analysis.strengths,
-              weaknesses: analysis.weaknesses,
-              recommendations: analysis.recommendations,
-              phaseAccuracy: analysis.phaseAccuracy,
-              timePerformance: analysis.timePerformance,
-              dayPerformance: analysis.dayPerformance,
-              conversionRate: analysis.conversionRate,
-            })
-          })
+          body: JSON.stringify(payload)
         });
         if (!res.ok) throw new Error('Failed to fetch AI report');
         const data = await res.json();
