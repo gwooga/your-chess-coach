@@ -102,7 +102,6 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            pgn,
             username,
             platform,
             average_rating,
