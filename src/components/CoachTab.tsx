@@ -26,6 +26,8 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
   const [openingsList, setOpeningsList] = useState<string[]>([]);
   const [relevantOpenings, setRelevantOpenings] = useState<string[]>([]);
   const [coachSays, setCoachSays] = useState<string[][]>([]);
+  const [summaryTables, setSummaryTables] = useState<any[]>([]);
+  const [highestRating, setHighestRating] = useState<number | null>(null);
   
   // --- Caching logic ---
   const analysisKey = JSON.stringify({ pgn, username, platform, average_rating });
@@ -130,13 +132,15 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
       setCoachSummary(null);
       setCoachSays([]);
       try {
-        const summaryTables = getAllTabSummaryTables(analysis.openings);
-        const highestRating = getHighestRating(analysis.ratings);
+        const summaryTablesLocal = getAllTabSummaryTables(analysis.openings);
+        const highestRatingLocal = getHighestRating(analysis.ratings);
+        setSummaryTables(summaryTablesLocal);
+        setHighestRating(highestRatingLocal);
         const totalGames = getTotalGames(analysis.openings);
         const payload = {
-          tables: summaryTables,
+          tables: summaryTablesLocal,
           total_games: totalGames,
-          rating: highestRating
+          rating: highestRatingLocal
         };
         const res = await fetch('/api/analyze', {
           method: 'POST',
