@@ -71,30 +71,6 @@ export default async function handler(
     return;
   }
 
-  // Parse openings_stats to extract breakdown by game type
-  let openingsStatsObj = {};
-  try {
-    openingsStatsObj = JSON.parse(openings_stats);
-  } catch (e) {
-    // fallback: send as string
-    openingsStatsObj = openings_stats;
-  }
-  // Calculate total games by type
-  let gameTypeBreakdown = '';
-  if (typeof openingsStatsObj === 'object' && openingsStatsObj !== null) {
-    const types = ['all', 'blitz', 'rapid', 'bullet', 'classical'];
-    gameTypeBreakdown = types
-      .map(type => {
-        const variant = openingsStatsObj[type];
-        if (variant && typeof variant.totalGames === 'number') {
-          return `${type.charAt(0).toUpperCase() + type.slice(1)}: ${variant.totalGames}`;
-        }
-        return null;
-      })
-      .filter(Boolean)
-      .join(', ');
-  }
-
   // Compose the new master prompt (no PGN, only tables, rating, and total games)
   const prompt = `You are a chess coach. You will be provided with:
 

@@ -208,17 +208,23 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
           </TabsContent>
         </Tabs>
       </div>
-      {summaryTables.map((table, idx) => (
-        <OpeningSummaryTable
-          key={idx}
-          rootLine={table.rootLine}
-          childLines={Array.isArray(table.childLines) ? table.childLines : []}
-          tableNumber={idx + 1}
-          totalGames={table.totalGames}
-          rating={highestRating}
-          coachSays={coachSays[idx] || []}
-        />
-      ))}
+      {/* Render tables and coach notes below the tabs, not inside summary tab */}
+      <div className="mt-8">
+        {(!Array.isArray(coachSays) || coachSays.length === 0) && (
+          <div className="mb-4 text-yellow-600">Coach's notes are not available for these tables.</div>
+        )}
+        {summaryTables.map((table, idx) => (
+          <OpeningSummaryTable
+            key={idx}
+            rootLine={table.rootLine}
+            childLines={Array.isArray(table.childLines) ? table.childLines : []}
+            tableNumber={idx + 1}
+            totalGames={table.totalGames}
+            rating={highestRating}
+            coachSays={coachSays[idx] || []}
+          />
+        ))}
+      </div>
     </div>
   );
 };
