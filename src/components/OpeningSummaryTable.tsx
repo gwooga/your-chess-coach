@@ -10,7 +10,6 @@ interface OpeningSummaryTableProps {
   tableNumber: number;
   totalGames: number;
   rating: number;
-  coachSays: string[] | string;
 }
 
 const notesCache: Record<string, string> = {};
@@ -20,25 +19,17 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
   childLines, 
   tableNumber,
   totalGames,
-  rating,
-  coachSays
+  rating
 }) => {
   const [selectedLine, setSelectedLine] = useState<OpeningData>(rootLine);
   const [coachNotes, setCoachNotes] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Defensive: If rootLine is missing, show fallback
-  if (!rootLine || typeof rootLine !== 'object' || !rootLine.sequence) {
-    return <div className="p-4 border rounded bg-red-50 text-red-700 mb-6">No data available for this table.</div>;
-  }
-  // Defensive: Ensure childLines is always an array of objects with sequence
-  const safeChildLines = Array.isArray(childLines) ? childLines.filter(l => l && l.sequence) : [];
-
   // Prepare table data for API
-  const tableData = [rootLine, ...safeChildLines].map(line => ({
-    Opening: getOpeningNameBySequence(line.sequence || ''),
-    Sequence: line.sequence || '',
+  const tableData = [rootLine, ...childLines].map(line => ({
+    Opening: getOpeningNameBySequence(line.sequence),
+    Sequence: line.sequence,
     'Games (N)': line.games,
     'Wins (%)': Math.round(line.winsPercentage ?? 0),
     'Draws (%)': Math.round(line.drawsPercentage ?? 0),
@@ -85,7 +76,6 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
 
   // Format opening name to be more concise
   const formatOpeningName = (sequence: string) => {
-    if (!sequence) return '';
     return getOpeningNameBySequence(sequence);
   };
   
@@ -108,7 +98,7 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
     
     return (
       <>
-        {formatOpeningName(rootLine.sequence || '')}: '{rootLine.sequence || ''}' (
+        {formatOpeningName(rootLine.sequence)}: '{rootLine.sequence}' (
         <span style={colorStyle}>{colorDisplay}</span>
         )
       </>
@@ -137,8 +127,8 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
                 className="font-medium bg-gray-100 hover:bg-gray-200"
                 onMouseEnter={() => setSelectedLine(rootLine)}
               >
-                <TableCell>{formatOpeningName(rootLine.sequence || '')}</TableCell>
-                <TableCell>{rootLine.sequence || ''}</TableCell>
+                <TableCell>{formatOpeningName(rootLine.sequence)}</TableCell>
+                <TableCell>{rootLine.sequence}</TableCell>
                 <TableCell>{formatGamesCount(rootLine.games, totalGames)}</TableCell>
                 <TableCell style={{color: 'rgb(22 163 74)'}}>{formatPercentage(rootLine.winsPercentage)}</TableCell>
                 <TableCell style={{color: 'rgb(75 85 99)'}}>{formatPercentage(rootLine.drawsPercentage)}</TableCell>
@@ -146,13 +136,13 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
               </TableRow>
               
               {/* Child lines */}
-              {safeChildLines.map((line, index) => (
+              {childLines.map((line, index) => (
                 <TableRow 
                   key={index}
                   onMouseEnter={() => setSelectedLine(line)}
                 >
-                  <TableCell>{formatOpeningName(line.sequence || '')}</TableCell>
-                  <TableCell>{line.sequence || ''}</TableCell>
+                  <TableCell>{formatOpeningName(line.sequence)}</TableCell>
+                  <TableCell>{line.sequence}</TableCell>
                   <TableCell>{formatGamesCount(line.games, totalGames)}</TableCell>
                   <TableCell style={{color: 'rgb(22 163 74)'}}>{formatPercentage(line.winsPercentage)}</TableCell>
                   <TableCell style={{color: 'rgb(75 85 99)'}}>{formatPercentage(line.drawsPercentage)}</TableCell>
@@ -167,19 +157,22 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
         <div className="mt-4 p-4 bg-white border rounded-lg">
           <h4 className="text-md font-semibold mb-2">Coach's notes</h4>
           <div className="space-y-2" style={{color: 'rgb(75 85 99)'}}>
-            {Array.isArray(coachSays)
-              ? coachSays.map((sentence: string, idx: number) => (
+            {loading && <p>Loading coach's notes...</p>}
+            {error && <p className="text-red-500">{error}</p>}
+            {!loading && !error && Array.isArray(coachNotes) && coachNotes.length > 0 && (
+              <div>
+                {coachNotes.map((sentence: string, idx: number) => (
                   <p key={idx}>{sentence}</p>
-                ))
-              : <p>{coachSays}</p>
-            }
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
       
       {/* Chess board display */}
       <div className="flex flex-col items-center justify-center h-full">
-        <h4 className="text-md font-semibold mb-2">Position after: {selectedLine.sequence || ''}</h4>
+        <h4 className="text-md font-semibold mb-2">Position after: {selectedLine.sequence}</h4>
         <ChessBoard fen={selectedLine.fen || ''} side={selectedLine.color} />
         <p className="mt-4 text-sm text-center" style={{color: 'rgb(75 85 99)'}}>
           Hover over any line to see the position on the board

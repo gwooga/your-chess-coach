@@ -7,7 +7,6 @@ import ChessAdviser from './ChessAdviser';
 import CoachSummary from './coach/CoachSummary';
 import CoachPerformance from './coach/CoachPerformance';
 import { getOpeningNameBySequence } from '@/services/chess/openingsDatabase';
-import OpeningSummaryTable from './OpeningSummaryTable';
 
 interface CoachTabProps {
   analysis: UserAnalysis;
@@ -25,9 +24,6 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
   const [error, setError] = useState<string | null>(null);
   const [openingsList, setOpeningsList] = useState<string[]>([]);
   const [relevantOpenings, setRelevantOpenings] = useState<string[]>([]);
-  const [coachSays, setCoachSays] = useState<string[][]>([]);
-  const [summaryTables, setSummaryTables] = useState<any[]>([]);
-  const [highestRating, setHighestRating] = useState<number | null>(null);
   
   // --- Caching logic ---
   const analysisKey = JSON.stringify({ pgn, username, platform, average_rating });
@@ -56,61 +52,33 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
     return Array.from(names);
   }
 
-  // Helper to extract only the summary tables for the 'all' variant (max 10 tables, max 10 rows, 6 columns)
-  function getAllTabSummaryTables(openings: Record<ChessVariant, any>) {
-    const result: any[] = [];
-    const variant = 'all';
-    if (!openings[variant]) return result;
-    // List the table keys you want (edit as needed)
-    const tableKeys = [
-      'white2', 'black2', 'white3', 'black3', 'white4', 'black4', 'white5', 'black5',
-      'white6', 'black6', 'white7', 'black7', 'white8', 'black8', 'white10', 'black10',
-      'meaningfulWhite', 'meaningfulBlack', 'meaningfulCombined'
-    ];
-    let tablesAdded = 0;
-    for (const key of tableKeys) {
-      if (Array.isArray(openings[variant][key]) && tablesAdded < 10) {
-        const lines = openings[variant][key].slice(0, 10);
-        if (lines.length === 0) continue;
-        const rootLine = lines[0];
-        const childLines = lines.slice(1);
-        const totalGames = lines.reduce((sum: number, line: any) => sum + (line.games || 0), 0);
-        result.push({
-          rootLine,
-          childLines,
-          totalGames,
-          color: rootLine.color || '',
-          title: getOpeningNameBySequence(rootLine.sequence || ''),
-        });
-        tablesAdded++;
+  // Helper to extract only the summary tables (max 10 tables per variant, max 10 rows per table)
+  function getSummaryTables(openings: Record<ChessVariant, any>) {
+    const variants: ChessVariant[] = ['all', 'blitz', 'rapid', 'bullet'];
+    const result: Record<string, any> = {};
+    for (const variant of variants) {
+      if (!openings[variant]) continue;
+      result[variant] = {};
+      // List the table keys you want (edit as needed)
+      const tableKeys = [
+        'white2', 'black2', 'white3', 'black3', 'white4', 'black4', 'white5', 'black5',
+        'white6', 'black6', 'white7', 'black7', 'white8', 'black8', 'white10', 'black10',
+        'meaningfulWhite', 'meaningfulBlack', 'meaningfulCombined'
+      ];
+      for (const key of tableKeys) {
+        if (Array.isArray(openings[variant][key])) {
+          result[variant][key] = openings[variant][key].slice(0, 10);
+        }
       }
-      if (tablesAdded >= 10) break;
+      // Optionally include totals/insights if you use them in the UI
+      if (typeof openings[variant].totalWhiteGames === 'number')
+        result[variant].totalWhiteGames = openings[variant].totalWhiteGames;
+      if (typeof openings[variant].totalBlackGames === 'number')
+        result[variant].totalBlackGames = openings[variant].totalBlackGames;
+      if (Array.isArray(openings[variant].insights))
+        result[variant].insights = openings[variant].insights;
     }
     return result;
-  }
-
-  // Helper to get the highest rating
-  function getHighestRating(ratings: any) {
-    if (!ratings) return null;
-    return Math.max(ratings.blitz || 0, ratings.rapid || 0, ratings.bullet || 0);
-  }
-
-  // Helper to get total games (sum of all games in 'all' variant)
-  function getTotalGames(openings: Record<ChessVariant, any>) {
-    const variant = 'all';
-    if (!openings[variant]) return 0;
-    let total = 0;
-    const tableKeys = [
-      'white2', 'black2', 'white3', 'black3', 'white4', 'black4', 'white5', 'black5',
-      'white6', 'black6', 'white7', 'black7', 'white8', 'black8', 'white10', 'black10',
-      'meaningfulWhite', 'meaningfulBlack', 'meaningfulCombined'
-    ];
-    for (const key of tableKeys) {
-      if (Array.isArray(openings[variant][key])) {
-        total += openings[variant][key].reduce((sum: number, line: any) => sum + (line.games || 0), 0);
-      }
-    }
-    return total;
   }
 
   useEffect(() => {
@@ -128,18 +96,27 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
       setLoading(true);
       setError(null);
       setCoachSummary(null);
-      setCoachSays([]);
       try {
-        const summaryTablesLocal = getAllTabSummaryTables(analysis.openings);
-        const highestRatingLocal = getHighestRating(analysis.ratings);
-        setSummaryTables(summaryTablesLocal);
-        setHighestRating(highestRatingLocal);
-        const totalGames = getTotalGames(analysis.openings);
+        const summaryTables = getSummaryTables(analysis.openings);
         const payload = {
-          tables: summaryTablesLocal,
-          total_games: totalGames,
-          rating: highestRatingLocal
+          username,
+          platform,
+          average_rating,
+          relevantOpenings: extracted,
+          openings_stats: JSON.stringify(summaryTables),
+          other_stats: JSON.stringify({
+            strengths: analysis.strengths,
+            weaknesses: analysis.weaknesses,
+            recommendations: analysis.recommendations,
+            phaseAccuracy: analysis.phaseAccuracy,
+            timePerformance: analysis.timePerformance,
+            dayPerformance: analysis.dayPerformance,
+            conversionRate: analysis.conversionRate,
+          })
         };
+        console.log('Payload size (bytes):', JSON.stringify(payload).length);
+        console.log('openings_stats size:', payload.openings_stats.length);
+        console.log('other_stats size:', payload.other_stats.length);
         const res = await fetch('/api/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -147,15 +124,12 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
         });
         if (!res.ok) throw new Error('Failed to fetch AI report');
         const data = await res.json();
-        // Defensive: check for new structure
-        const summaryObj = data.summary || {};
-        setCoachSummary(summaryObj.summary || {});
-        setCoachSays(summaryObj.coach_says || []);
-        setOpeningsList(summaryObj.openingsList || []);
+        setCoachSummary(data.summary);
+        setOpeningsList(data.summary?.openingsList || []);
         setRelevantOpenings(extracted);
         lastKeyRef.current = analysisKey;
-        lastSummaryRef.current = summaryObj.summary || {};
-        lastOpeningsListRef.current = summaryObj.openingsList || [];
+        lastSummaryRef.current = data.summary;
+        lastOpeningsListRef.current = data.summary?.openingsList || [];
         lastRelevantOpeningsRef.current = extracted;
       } catch (err: any) {
         setError(err.message || 'Unknown error');
@@ -165,9 +139,6 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
     };
     fetchCoachSummary();
   }, [analysisKey, analysis]);
-
-  // Before rendering OpeningSummaryTable, log summaryTables
-  console.log('summaryTables:', summaryTables);
 
   return (
     <div className="space-y-8">
@@ -207,23 +178,6 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
             />
           </TabsContent>
         </Tabs>
-      </div>
-      {/* Render tables and coach notes below the tabs, not inside summary tab */}
-      <div className="mt-8">
-        {(!Array.isArray(coachSays) || coachSays.length === 0) && (
-          <div className="mb-4 text-yellow-600">Coach's notes are not available for these tables.</div>
-        )}
-        {summaryTables.map((table, idx) => (
-          <OpeningSummaryTable
-            key={idx}
-            rootLine={table.rootLine}
-            childLines={Array.isArray(table.childLines) ? table.childLines : []}
-            tableNumber={idx + 1}
-            totalGames={table.totalGames}
-            rating={highestRating}
-            coachSays={coachSays[idx] || []}
-          />
-        ))}
       </div>
     </div>
   );
