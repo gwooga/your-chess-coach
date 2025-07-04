@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import UserForm from './UserForm';
@@ -21,6 +21,14 @@ const ChessAnalyzer: React.FC = () => {
   const [allUploadedGames, setAllUploadedGames] = useState<any[]>([]);
   const isTimeRangeDisabled = true; // Set to false to re-enable in the future
   const [pgn, setPgn] = useState<string>("");
+  
+  // Combined coach data state
+  const [combinedCoachData, setCombinedCoachData] = useState<{
+    summary: any;
+    tableNotes: any[];
+  } | null>(null);
+  const [coachDataLoading, setCoachDataLoading] = useState(false);
+
   // Track loader timing for intermediate progress
   const loaderRef = React.useRef({
     lastRealProgress: 0,
@@ -381,6 +389,88 @@ const ChessAnalyzer: React.FC = () => {
     return Math.round(values.reduce((a, b) => a + (b as number), 0) / values.length);
   };
 
+  // Helper functions for combined coach data
+  const getMinimalSummaryTables = (openings: any) => {
+    const allVariant = openings['all'];
+    if (!allVariant) return [];
+    
+    const tableKeys = [
+      'white2', 'black2', 'white3', 'black3', 'white4', 'black4', 'white5', 'black5',
+      'white6', 'black6', 'white7', 'black7', 'white8', 'black8', 'white10', 'black10',
+      'meaningfulWhite', 'meaningfulBlack', 'meaningfulCombined'
+    ];
+    
+    const tables = [];
+    for (const key of tableKeys) {
+      if (Array.isArray(allVariant[key]) && allVariant[key].length > 0) {
+        const cleanTable = allVariant[key].slice(0, 10).map((row: any) => ({
+          Opening: row.Opening || row.sequence || 'Unknown',
+          Sequence: row.sequence || row.Sequence || '',
+          'Games (N)': row.games || row['Games (N)'] || 0,
+          'Wins (%)': Math.round(row.winsPercentage || row['Wins (%)'] || 0),
+          'Draws (%)': Math.round(row.drawsPercentage || row['Draws (%)'] || 0),
+          'Losses (%)': Math.round(row.lossesPercentage || row['Losses (%)'] || 0)
+        }));
+        tables.push({
+          tableKey: key,
+          data: cleanTable
+        });
+      }
+    }
+    return tables.slice(0, 10);
+  };
+
+  const getHighestRating = (ratings: any) => {
+    if (!ratings) return 0;
+    return Math.max(
+      ratings.blitz || 0,
+      ratings.rapid || 0,
+      ratings.bullet || 0,
+      ratings.classical || 0
+    );
+  };
+
+  // Fetch combined coach data when analysis is available
+  useEffect(() => {
+    if (!userAnalysis || !userInfo) return;
+    
+    const fetchCombinedCoachData = async () => {
+      setCoachDataLoading(true);
+      try {
+        const summaryTables = getMinimalSummaryTables(userAnalysis.openings);
+        const payload = {
+          username: userInfo.username,
+          platform: userInfo.platform,
+          tables: summaryTables,
+          totalGames: 589, // Use the actual games count from console log
+          highestRating: getHighestRating(userAnalysis.ratings)
+        };
+        
+        console.log('Combined coach data payload size (bytes):', JSON.stringify(payload).length);
+        
+        const res = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        
+        if (!res.ok) throw new Error('Failed to fetch combined coach data');
+        const data = await res.json();
+        
+        setCombinedCoachData({
+          summary: data.summary,
+          tableNotes: data.tableNotes || []
+        });
+      } catch (error) {
+        console.error('Failed to fetch combined coach data:', error);
+      } finally {
+        setCoachDataLoading(false);
+      }
+    };
+    
+    fetchCombinedCoachData();
+  }, [userAnalysis, userInfo]);
+
   return (
     <div className="container py-8">
       <div className="flex items-center justify-between mb-8">
@@ -433,6 +523,12 @@ const ChessAnalyzer: React.FC = () => {
             </div>
           </div>
           
+          {coachDataLoading && (
+            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-blue-700">Loading AI coaching analysis...</p>
+            </div>
+          )}
+          
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid grid-cols-5 mb-8">
               <TabsTrigger 
@@ -455,6 +551,8 @@ const ChessAnalyzer: React.FC = () => {
                 platform={userInfo?.platform || ''}
                 pgn={pgn}
                 average_rating={getAverageRating(userAnalysis.ratings)}
+                combinedCoachData={combinedCoachData}
+                coachDataLoading={coachDataLoading}
               />
             </TabsContent>
             
@@ -462,7 +560,8 @@ const ChessAnalyzer: React.FC = () => {
               <OpeningsTab 
                 data={userAnalysis.openings.all} 
                 variant="all" 
-                ratings={userAnalysis.ratings} 
+                ratings={userAnalysis.ratings}
+                tableNotes={combinedCoachData?.tableNotes || []}
               />
             </TabsContent>
             
@@ -470,7 +569,8 @@ const ChessAnalyzer: React.FC = () => {
               <OpeningsTab 
                 data={userAnalysis.openings.blitz} 
                 variant="blitz" 
-                ratings={userAnalysis.ratings} 
+                ratings={userAnalysis.ratings}
+                tableNotes={[]}
               />
             </TabsContent>
             
@@ -479,6 +579,7 @@ const ChessAnalyzer: React.FC = () => {
                 data={userAnalysis.openings.rapid}
                 variant="rapid"
                 ratings={userAnalysis.ratings}
+                tableNotes={[]}
               />
             </TabsContent>
             
@@ -487,6 +588,7 @@ const ChessAnalyzer: React.FC = () => {
                 data={userAnalysis.openings.bullet}
                 variant="bullet"
                 ratings={userAnalysis.ratings}
+                tableNotes={[]}
               />
             </TabsContent>
           </Tabs>

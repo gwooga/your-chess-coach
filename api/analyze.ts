@@ -58,7 +58,7 @@ export default async function handler(
   }).join('\n\n');
 
   // Create the master prompt combining both coach notes and coach summary
-  const prompt = `You are a world-class chess coach. You will analyze a student's opening performance data and provide both detailed table-specific notes AND an overall coaching summary.
+  const prompt = `You are a world-class chess coach. You will analyze a student's opening performance data (sometime playing as black and sometimes playing as white) and provide both detailed table-specific notes AND an overall coaching summary.
 
 **Student Information:**
 - Username: ${username}
@@ -94,10 +94,30 @@ ${formattedTables}
 - Optionally, a tactical motif or pawn-structure theme to drill
 
 **For coachSummary:** Based on ALL tables combined:
-- **Personal Report:** Extract 3-4 highest-share lines, note win/loss deviations ≥10 points from 50%
-- **Strengths:** 2-3 positive patterns (lines with Win% ≥55% and ≥3% share, repertoire breadth)
-- **Areas to Improve:** 3-4 numbered items tied to real stats (lines with Loss% ≥55% and ≥3% share)
-- **Study Recommendations:** Bullet points with Focus, Drill, and Rationale, tailored to rating ${highestRating}
+
+- **Personal Report:**  
+  Summarize the highest-share openings and any striking score gaps. Mention game-length disparity and any optional blunder/clock stats.  
+  For example:  
+    - Extract 3-4 highest-share lines from Top20 (using the gamesShare field).  
+    - Note any line where Win% or Loss% deviates by ≥10 points from 50%.  
+    - Mention average move-length difference and any auxiliary clock/blunder stat if available.
+
+- **Strengths:**  
+  List 2-3 positive patterns (e.g., "wide repertoire", "good gambit score").  
+  For example:  
+    - A line with Win% ≥ 55% and ≥3% share  
+    - High endgame save-rate (if draw% in lost positions is high)  
+    - Repertoire breadth if no single line >20%
+
+- **Areas to Improve:**  
+  Numbered list (3-4 items). Tie each item to real stats (e.g., "–11 vs 4.Bc4 in Classical Sicilian").  
+  For example:  
+    - Lines with Loss% ≥ 55% and ≥3% share  
+    - Any huge share line (≥10%) that is only break-even  
+    - Clock or blunder issue if computed
+
+- **Study Recommendations:**  
+  In bullet points, write Focus, Drill, and Rationale. Tailor drills to the ratingBand (see mapping below, do NOT mention the band explicitly). Link each drill back to an Area-to-Improve item.
 
 **Rating band guidance for recommendations:**
 - 600-1000: basics (tactics, mate-in-one, piece safety, simple openings)

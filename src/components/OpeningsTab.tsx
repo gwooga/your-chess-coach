@@ -14,10 +14,10 @@ interface OpeningsTabProps {
   data: OpeningsTableData;
   variant: ChessVariant;
   ratings: Rating;
-  analysis?: UserAnalysis; // Add analysis prop
+  tableNotes?: any[];
 }
 
-const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings, analysis }) => {
+const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings, tableNotes = [] }) => {
   const [activeSubTab, setActiveSubTab] = useState<string>("summary");
   
   // Create combined meaningful openings data
@@ -52,7 +52,6 @@ const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings, analy
         <RatingDisplay 
           ratings={ratings} 
           variant={variant === 'all' ? undefined : variant}
-          analysis={analysis}
         />
       </div>
       
@@ -64,7 +63,7 @@ const OpeningsTab: React.FC<OpeningsTabProps> = ({ data, variant, ratings, analy
         
         {/* Summary Tab Content */}
         <TabsContent value="summary" className="mt-0">
-          <OpeningSummary data={data} variant={variant} rating={getAverageRating(ratings)} />
+          <OpeningSummary data={data} variant={variant} rating={getAverageRating(ratings)} tableNotes={tableNotes} />
         </TabsContent>
         
         {/* Full Breakdown Tab Content */}

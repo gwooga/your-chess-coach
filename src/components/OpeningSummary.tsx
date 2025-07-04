@@ -6,9 +6,10 @@ interface OpeningSummaryProps {
   data: OpeningsTableData;
   variant: ChessVariant;
   rating: number;
+  tableNotes?: any[];
 }
 
-const OpeningSummary: React.FC<OpeningSummaryProps> = ({ data, variant, rating }) => {
+const OpeningSummary: React.FC<OpeningSummaryProps> = ({ data, variant, rating, tableNotes = [] }) => {
   // Function to extract root lines that meet criteria (>= 5% of games)
   const extractRootLines = (colorData: any[], totalGames: number, color: 'white' | 'black') => {
     if (!colorData || !Array.isArray(colorData)) return [];
@@ -120,6 +121,7 @@ const OpeningSummary: React.FC<OpeningSummaryProps> = ({ data, variant, rating }
             tableNumber={index + 1}
             totalGames={table.totalGames}
             rating={rating}
+            preloadedNotes={tableNotes && tableNotes[index] ? tableNotes[index] : undefined}
           />
         ))
       ) : (

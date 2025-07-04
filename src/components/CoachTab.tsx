@@ -15,9 +15,23 @@ interface CoachTabProps {
   platform: string;
   pgn: string;
   average_rating: string | number;
+  combinedCoachData?: {
+    summary: any;
+    tableNotes: any[];
+  } | null;
+  coachDataLoading?: boolean;
 }
 
-const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platform, pgn, average_rating }) => {
+const CoachTab: React.FC<CoachTabProps> = ({ 
+  analysis, 
+  variant, 
+  username, 
+  platform, 
+  pgn, 
+  average_rating,
+  combinedCoachData,
+  coachDataLoading
+}) => {
   const [activeSection, setActiveSection] = useState<string>("summary");
   const [coachSummary, setCoachSummary] = useState<any | null>(null);
   const [tableNotes, setTableNotes] = useState<any[]>([]);
@@ -26,141 +40,50 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
   const [openingsList, setOpeningsList] = useState<string[]>([]);
   const [relevantOpenings, setRelevantOpenings] = useState<string[]>([]);
   
-  // --- Caching logic ---
-  const analysisKey = JSON.stringify({ username, platform, average_rating });
-  const lastKeyRef = useRef<string | null>(null);
-  const lastSummaryRef = useRef<any | null>(null);
-  const lastTableNotesRef = useRef<any[]>([]);
-  const lastOpeningsListRef = useRef<string[] | null>(null);
-  const lastRelevantOpeningsRef = useRef<string[] | null>(null);
-  
   const variantData = analysis.openings[variant];
   
-  function extractRelevantOpenings(analysis: any): string[] {
-    const variants: ChessVariant[] = ['all', 'blitz', 'rapid', 'bullet'];
-    const names = new Set<string>();
-    variants.forEach(variant => {
-      const openingsData = analysis.openings?.[variant];
-      if (openingsData) {
-        Object.keys(openingsData).forEach(key => {
-          if (Array.isArray(openingsData[key])) {
-            openingsData[key].forEach((opening: any) => {
-              if (opening && opening.sequence) names.add(getOpeningNameBySequence(opening.sequence));
-            });
-          }
-        });
-      }
-    });
-    return Array.from(names);
-  }
 
-  // Helper to extract only the 'All' variant summary tables (max 10 tables, max 10 rows each, 6 columns only)
-  function getMinimalSummaryTables(openings: Record<ChessVariant, any>) {
-    const allVariant = openings['all'];
-    if (!allVariant) return [];
+
+  // Helper function to extract relevant openings
+  const extractRelevantOpenings = (analysis: any) => {
+    const allData = analysis.openings?.all;
+    if (!allData) return [];
     
-    const tableKeys = [
-      'white2', 'black2', 'white3', 'black3', 'white4', 'black4', 'white5', 'black5',
-      'white6', 'black6', 'white7', 'black7', 'white8', 'black8', 'white10', 'black10',
-      'meaningfulWhite', 'meaningfulBlack', 'meaningfulCombined'
-    ];
+    const relevantOpenings = [];
     
-    const tables = [];
-    for (const key of tableKeys) {
-      if (Array.isArray(allVariant[key]) && allVariant[key].length > 0) {
-        // Only include the first 10 rows and only the 6 essential columns
-        const cleanTable = allVariant[key].slice(0, 10).map((row: any) => ({
-          Opening: row.Opening || getOpeningNameBySequence(row.sequence) || 'Unknown',
-          Sequence: row.sequence || row.Sequence || '',
-          'Games (N)': row.games || row['Games (N)'] || 0,
-          'Wins (%)': Math.round(row.winsPercentage || row['Wins (%)'] || 0),
-          'Draws (%)': Math.round(row.drawsPercentage || row['Draws (%)'] || 0),
-          'Losses (%)': Math.round(row.lossesPercentage || row['Losses (%)'] || 0)
-        }));
-        tables.push({
-          tableKey: key,
-          data: cleanTable
-        });
-      }
+    // Check meaningful openings
+    if (allData.meaningfulCombined) {
+      relevantOpenings.push(...allData.meaningfulCombined.map((opening: any) => opening.sequence));
     }
-    return tables.slice(0, 10); // Max 10 tables
-  }
+    
+    return relevantOpenings.slice(0, 10);
+  };
 
-  // Get highest rating
-  function getHighestRating(ratings: any) {
-    if (!ratings) return 0;
-    return Math.max(
-      ratings.blitz || 0,
-      ratings.rapid || 0,
-      ratings.bullet || 0,
-      ratings.classical || 0
-    );
-  }
-
-  // Get total games count
-  function getTotalGames(analysis: any) {
-    return analysis.totalGames || 0;
-  }
-
-  // Helper function to get coach notes for a specific table key
-  function getTableNotes(tableKey: string): string[] {
-    const tableNote = tableNotes.find(note => note.tableKey === tableKey);
-    return tableNote ? tableNote.notes : [];
-  }
-
+  // Use provided combined coach data if available
   useEffect(() => {
-    const extracted = extractRelevantOpenings(analysis);
-    setRelevantOpenings(extracted);
-    if (lastKeyRef.current === analysisKey && lastSummaryRef.current) {
-      setCoachSummary(lastSummaryRef.current);
-      setTableNotes(lastTableNotesRef.current);
-      setOpeningsList(lastOpeningsListRef.current || []);
-      setRelevantOpenings(lastRelevantOpeningsRef.current || []);
+    if (combinedCoachData) {
+      setCoachSummary(combinedCoachData.summary);
+      setTableNotes(combinedCoachData.tableNotes);
+      setOpeningsList(combinedCoachData.summary?.openingsList || []);
+      const extracted = extractRelevantOpenings(analysis);
+      setRelevantOpenings(extracted);
       setLoading(false);
       setError(null);
       return;
     }
-    const fetchCoachSummary = async () => {
+    
+    if (coachDataLoading) {
       setLoading(true);
       setError(null);
-      setCoachSummary(null);
-      setTableNotes([]);
-      try {
-        const summaryTables = getMinimalSummaryTables(analysis.openings);
-        const payload = {
-          username,
-          platform,
-          tables: summaryTables,
-          totalGames: getTotalGames(analysis),
-          highestRating: getHighestRating(analysis.ratings)
-        };
-        console.log('Payload size (bytes):', JSON.stringify(payload).length);
-        console.log('Number of tables:', summaryTables.length);
-        console.log('Tables:', summaryTables);
-        const res = await fetch('/api/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) throw new Error('Failed to fetch AI report');
-        const data = await res.json();
-        setCoachSummary(data.summary);
-        setTableNotes(data.tableNotes || []);
-        setOpeningsList(data.summary?.openingsList || []);
-        setRelevantOpenings(extracted);
-        lastKeyRef.current = analysisKey;
-        lastSummaryRef.current = data.summary;
-        lastTableNotesRef.current = data.tableNotes || [];
-        lastOpeningsListRef.current = data.summary?.openingsList || [];
-        lastRelevantOpeningsRef.current = extracted;
-      } catch (err: any) {
-        setError(err.message || 'Unknown error');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCoachSummary();
-  }, [analysisKey, analysis]);
+      return;
+    }
+    
+    // If no combined data is available, show message
+    if (!combinedCoachData && !coachDataLoading) {
+      setLoading(false);
+      setError("No coaching data available");
+    }
+  }, [combinedCoachData, coachDataLoading, analysis]);
 
   return (
     <div className="space-y-8">
