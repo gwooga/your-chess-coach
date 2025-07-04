@@ -52,33 +52,63 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
     return Array.from(names);
   }
 
-  // Helper to extract only the summary tables (max 10 tables per variant, max 10 rows per table)
-  function getSummaryTables(openings: Record<ChessVariant, any>) {
-    const variants: ChessVariant[] = ['all', 'blitz', 'rapid', 'bullet'];
-    const result: Record<string, any> = {};
-    for (const variant of variants) {
-      if (!openings[variant]) continue;
-      result[variant] = {};
-      // List the table keys you want (edit as needed)
-      const tableKeys = [
-        'white2', 'black2', 'white3', 'black3', 'white4', 'black4', 'white5', 'black5',
-        'white6', 'black6', 'white7', 'black7', 'white8', 'black8', 'white10', 'black10',
-        'meaningfulWhite', 'meaningfulBlack', 'meaningfulCombined'
-      ];
-      for (const key of tableKeys) {
-        if (Array.isArray(openings[variant][key])) {
-          result[variant][key] = openings[variant][key].slice(0, 10);
-        }
+  // Helper to extract only the summary tables for the 'all' variant (max 10 tables, max 10 rows, 6 columns)
+  function getAllTabSummaryTables(openings: Record<ChessVariant, any>) {
+    const result: any[] = [];
+    const variant = 'all';
+    if (!openings[variant]) return result;
+    // List the table keys you want (edit as needed)
+    const tableKeys = [
+      'white2', 'black2', 'white3', 'black3', 'white4', 'black4', 'white5', 'black5',
+      'white6', 'black6', 'white7', 'black7', 'white8', 'black8', 'white10', 'black10',
+      'meaningfulWhite', 'meaningfulBlack', 'meaningfulCombined'
+    ];
+    let tablesAdded = 0;
+    for (const key of tableKeys) {
+      if (Array.isArray(openings[variant][key]) && tablesAdded < 10) {
+        // Only take up to 10 rows per table, and only the 6 columns needed
+        const table = openings[variant][key].slice(0, 10).map((line: any) => ({
+          Opening: getOpeningNameBySequence(line.sequence),
+          Sequence: line.sequence,
+          'Games (N)': line.games,
+          'Wins (%)': Math.round(line.winsPercentage ?? 0),
+          'Draws (%)': Math.round(line.drawsPercentage ?? 0),
+          'Losses (%)': Math.round(line.lossesPercentage ?? 0),
+        }));
+        result.push({
+          title: getOpeningNameBySequence(openings[variant][key][0]?.sequence || ''),
+          color: openings[variant][key][0]?.color || '',
+          table
+        });
+        tablesAdded++;
       }
-      // Optionally include totals/insights if you use them in the UI
-      if (typeof openings[variant].totalWhiteGames === 'number')
-        result[variant].totalWhiteGames = openings[variant].totalWhiteGames;
-      if (typeof openings[variant].totalBlackGames === 'number')
-        result[variant].totalBlackGames = openings[variant].totalBlackGames;
-      if (Array.isArray(openings[variant].insights))
-        result[variant].insights = openings[variant].insights;
+      if (tablesAdded >= 10) break;
     }
     return result;
+  }
+
+  // Helper to get the highest rating
+  function getHighestRating(ratings: any) {
+    if (!ratings) return null;
+    return Math.max(ratings.blitz || 0, ratings.rapid || 0, ratings.bullet || 0);
+  }
+
+  // Helper to get total games (sum of all games in 'all' variant)
+  function getTotalGames(openings: Record<ChessVariant, any>) {
+    const variant = 'all';
+    if (!openings[variant]) return 0;
+    let total = 0;
+    const tableKeys = [
+      'white2', 'black2', 'white3', 'black3', 'white4', 'black4', 'white5', 'black5',
+      'white6', 'black6', 'white7', 'black7', 'white8', 'black8', 'white10', 'black10',
+      'meaningfulWhite', 'meaningfulBlack', 'meaningfulCombined'
+    ];
+    for (const key of tableKeys) {
+      if (Array.isArray(openings[variant][key])) {
+        total += openings[variant][key].reduce((sum: number, line: any) => sum + (line.games || 0), 0);
+      }
+    }
+    return total;
   }
 
   useEffect(() => {
@@ -97,26 +127,15 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
       setError(null);
       setCoachSummary(null);
       try {
-        const summaryTables = getSummaryTables(analysis.openings);
+        const summaryTables = getAllTabSummaryTables(analysis.openings);
+        const highestRating = getHighestRating(analysis.ratings);
+        const totalGames = getTotalGames(analysis.openings);
         const payload = {
-          username,
-          platform,
-          average_rating,
-          relevantOpenings: extracted,
-          openings_stats: JSON.stringify(summaryTables),
-          other_stats: JSON.stringify({
-            strengths: analysis.strengths,
-            weaknesses: analysis.weaknesses,
-            recommendations: analysis.recommendations,
-            phaseAccuracy: analysis.phaseAccuracy,
-            timePerformance: analysis.timePerformance,
-            dayPerformance: analysis.dayPerformance,
-            conversionRate: analysis.conversionRate,
-          })
+          tables: summaryTables,
+          total_games: totalGames,
+          rating: highestRating
         };
         console.log('Payload size (bytes):', JSON.stringify(payload).length);
-        console.log('openings_stats size:', payload.openings_stats.length);
-        console.log('other_stats size:', payload.other_stats.length);
         const res = await fetch('/api/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
