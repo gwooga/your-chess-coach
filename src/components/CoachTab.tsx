@@ -166,6 +166,9 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
     fetchCoachSummary();
   }, [analysisKey, analysis]);
 
+  // Before rendering OpeningSummaryTable, log summaryTables
+  console.log('summaryTables:', summaryTables);
+
   return (
     <div className="space-y-8">
       <div className="mb-6">
@@ -209,7 +212,7 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
         <OpeningSummaryTable
           key={idx}
           rootLine={table.rootLine}
-          childLines={table.childLines}
+          childLines={Array.isArray(table.childLines) ? table.childLines : []}
           tableNumber={idx + 1}
           totalGames={table.totalGames}
           rating={highestRating}

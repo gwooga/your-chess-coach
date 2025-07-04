@@ -107,6 +107,9 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
     );
   };
 
+  // Defensive: Ensure childLines is always an array
+  const safeChildLines = Array.isArray(childLines) ? childLines : [];
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10 border rounded-lg p-4 bg-gray-50">
       <div className="lg:col-span-2">
@@ -138,7 +141,7 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
               </TableRow>
               
               {/* Child lines */}
-              {childLines.map((line, index) => (
+              {safeChildLines.map((line, index) => (
                 <TableRow 
                   key={index}
                   onMouseEnter={() => setSelectedLine(line)}

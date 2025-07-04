@@ -62,11 +62,12 @@ export default async function handler(
     return;
   }
 
+  // Log the incoming request body for debugging
+  console.log('Incoming analyze payload:', request.body);
   // Accept all relevant data from the request
-  const { username, platform, average_rating, relevantOpenings, openings_stats, other_stats } = request.body || {};
-
-  if (!username) {
-    response.status(400).json({ error: 'Missing username.' });
+  const { tables, total_games, rating } = request.body || {};
+  if (!tables || !Array.isArray(tables) || typeof total_games !== 'number' || typeof rating !== 'number') {
+    response.status(400).json({ error: 'Missing or invalid tables, total_games, or rating.' });
     return;
   }
 
@@ -174,10 +175,10 @@ Instructions:
 ---
 
 Here are the tables:
-${JSON.stringify(request.body.tables, null, 2)}
+${JSON.stringify(tables, null, 2)}
 
-Student rating: ${request.body.rating}
-Total games: ${request.body.total_games}`;
+Student rating: ${rating}
+Total games: ${total_games}`;
 
   try {
     const completion = await openai.chat.completions.create({
