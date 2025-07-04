@@ -1,51 +1,33 @@
 import 'dotenv/config';
 import OpenAI from 'openai';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { Chess } from 'chess.js';
-
-// --- Set aside for now (to be re-incorporated later):
-// import { parsePgnContent } from '../src/services/pgnDownloadService.js';
-// import { analyzeChessData } from '../src/services/chessAnalysisService.js';
-// All custom stats extraction and advanced analysis
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-function parseBasicStats(pgn: string) {
-  // Split PGN into games
-  const games = pgn.split(/\n\n(?=\[Event )/g).filter(g => g.trim());
-  let openingCounts: Record<string, number> = {};
-  let win = 0, loss = 0, draw = 0;
-  const openingsList: string[] = [];
-  for (const gameText of games) {
-    try {
-      const chess = new Chess();
-      chess.loadPgn(gameText);
-      const headers = chess.header();
-      // Opening
-      const opening = headers.Opening || 'Unknown';
-      openingCounts[opening] = (openingCounts[opening] || 0) + 1;
-      openingsList.push(opening);
-      // Result
-      if (headers.Result === '1-0') win++;
-      else if (headers.Result === '0-1') loss++;
-      else draw++;
-    } catch (e) {
-      // Ignore parse errors
-    }
-  }
-  // Most common opening
-  const mostCommonOpening = Object.entries(openingCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown';
-  return {
-    totalGames: games.length,
-    win,
-    loss,
-    draw,
-    mostCommonOpening,
-    openingCounts,
-    openingsList,
-  };
+function formatTableMarkdown(table: any[]): string {
+  if (!table.length) return '';
+  const headers = Object.keys(table[0]);
+  const headerRow = `| ${headers.join(' | ')} |`;
+  const separator = `|${headers.map(() => '---').join('|')}|`;
+  const rows = table.map(row => `| ${headers.map(h => row[h]).join(' | ')} |`);
+  return [headerRow, separator, ...rows].join('\n');
+}
+
+function splitIntoPoints(text: string): string[] {
+  // Remove any repeated Coach's Notes header
+  let cleaned = text.replace(/\*+Coach'?s? Notes:?.*\n?/gi, '').trim();
+  // Try to split by bullet points: lines starting with -, *, or numbered
+  const bulletRegex = /^(?:\s*[-*]|\s*\d+\.)\s+/gm;
+  const bullets = cleaned.split(bulletRegex).map(s => s.trim()).filter(Boolean);
+  if (bullets.length > 1) return bullets;
+  // Fallback: split by double newlines (paragraphs)
+  const paras = cleaned.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+  if (paras.length > 1) return paras;
+  // Fallback: split by sentences
+  const sentences = cleaned.match(/[^.!?]+[.!?]+(\s|$)/g) || [cleaned];
+  return sentences.map(s => s.trim()).filter(Boolean);
 }
 
 export default async function handler(
@@ -62,40 +44,68 @@ export default async function handler(
     return;
   }
 
-  // Accept all relevant data from the request
-  const { username, platform, average_rating, relevantOpenings, openings_stats, other_stats } = request.body || {};
+  const { username, platform, tables, totalGames, highestRating } = request.body || {};
 
-  if (!username) {
-    response.status(400).json({ error: 'Missing username.' });
+  if (!username || !tables || !Array.isArray(tables)) {
+    response.status(400).json({ error: 'Missing required fields: username, tables.' });
     return;
   }
 
-  // Parse openings_stats to extract breakdown by game type
-  let openingsStatsObj = {};
-  try {
-    openingsStatsObj = JSON.parse(openings_stats);
-  } catch (e) {
-    // fallback: send as string
-    openingsStatsObj = openings_stats;
-  }
-  // Calculate total games by type
-  let gameTypeBreakdown = '';
-  if (typeof openingsStatsObj === 'object' && openingsStatsObj !== null) {
-    const types = ['all', 'blitz', 'rapid', 'bullet', 'classical'];
-    gameTypeBreakdown = types
-      .map(type => {
-        const variant = openingsStatsObj[type];
-        if (variant && typeof variant.totalGames === 'number') {
-          return `${type.charAt(0).toUpperCase() + type.slice(1)}: ${variant.totalGames}`;
-        }
-        return null;
-      })
-      .filter(Boolean)
-      .join(', ');
-  }
+  // Format all tables for the prompt
+  const formattedTables = tables.map((table: any, index: number) => {
+    const tableMarkdown = formatTableMarkdown(table.data);
+    return `**Table ${index + 1} (${table.tableKey}):**\n${tableMarkdown}`;
+  }).join('\n\n');
 
-  // Compose the new prompt (no PGN)
-  const prompt = `You are a world-class chess coach. You will be provided with a detailed summary of a student's real chess data, including their rating, recent game statistics, and opening performance tables.\n\nYour task:\nBased on all the data provided, generate a JSON object with the following four fields:\n\n---\n\n### Personal Coaching Report  \n- Summarize the highest-share openings and any striking score gaps.  \n- Mention game-length disparity and any optional blunder/clock stats.  \n- For example:  \n  - Extract **3-4 highest-share lines** from Top20 (using the gamesShare field).  \n  - Note any line where Win% or Loss% deviates by ≥10 points from 50%.  \n  - Mention average move-length difference and any auxiliary clock/blunder stat if available.\n\n### Strengths  \n- List 2-3 positive patterns (e.g., "wide repertoire", "good gambit score").  \n- For example:  \n  - A line with Win% ≥ 55% and ≥3% share  \n  - High endgame save-rate (if draw% in lost positions is high)  \n  - Repertoire breadth if no single line >20%\n\n### Areas to Improve  \n- Numbered list (3-4 items).  \n- Tie each item to real stats (e.g., "–11 vs 4.Bc4 in Classical Sicilian").  \n- For example:  \n  - Lines with Loss% ≥ 55% and ≥3% share  \n  - Any huge share line (≥10%) that is only break-even  \n  - Clock or blunder issue if computed\n\n### Study Recommendations  \n- In bullet points, write Focus, Drill, and Rationale.  \n- Tailor drills to the **ratingBand** (see mapping below, do NOT mention the band explicitly).  \n- Link each drill back to an Area-to-Improve item.\n\n**Rating band mapping:**  \n- 600-800  → basics (tactics, mate-in-one, piece safety)  \n- 801-1000 → fundamental tactics + simple openings  \n- 1001-1200 → intermediate tactics, basic endgames  \n- 1201-1400 → opening ideas, opposition endgames, time use  \n- 1401-1600 → positional themes, anti-sideline prep, clock discipline  \n- 1601-1800 → deep opening patch, rook endings, calculation method  \n- 1801-2000 → advanced structures, prophylaxis, targeted engine prep  \n- 2001-2200+ → novelties, long strategic plans, psychological edges\n\n**Instructions:**  \n- Do not repeat the raw stats or tables in your output—summarize and interpret them.\n- Adapt your language complexity to the student's rating range (from their rating up to rating+100).\n- Return only a valid JSON object in your response, with the four fields described above.\n\n**Student data:**\n- Username: ${username}\n- Platform: ${platform}\n- Rating: ${average_rating}\n- Total Games Breakdown: ${gameTypeBreakdown}\n- Relevant Openings: ${JSON.stringify(relevantOpenings, null, 2)}\n- Openings Stats: ${openings_stats}\n- Other Stats: ${other_stats}`;
+  // Create the master prompt combining both coach notes and coach summary
+  const prompt = `You are a world-class chess coach. You will analyze a student's opening performance data and provide both detailed table-specific notes AND an overall coaching summary.
+
+**Student Information:**
+- Username: ${username}
+- Platform: ${platform}
+- Total Games: ${totalGames}
+- Highest Rating: ${highestRating}
+
+**Opening Performance Tables:**
+${formattedTables}
+
+**Your task is to provide a JSON response with the following structure:**
+
+{
+  "tableNotes": [
+    {
+      "tableKey": "table_key_here",
+      "notes": ["bullet point 1", "bullet point 2", "bullet point 3", "bullet point 4"]
+    },
+    // ... for each table
+  ],
+  "coachSummary": {
+    "personal_report": "A comprehensive summary of the student's opening performance, highlighting the most significant patterns, strengths, and areas for improvement based on all tables.",
+    "strengths": ["Strength 1", "Strength 2", "Strength 3"],
+    "areas_to_improve": ["1. Specific area with stats", "2. Another area with stats", "3. Third area with stats"],
+    "study_recommendations": ["• Focus: specific area - Drill: specific practice - Rationale: why this helps", "• Focus: another area - Drill: another practice - Rationale: why this helps"]
+  }
+}
+
+**For tableNotes:** Each table should get 4-6 bullet points covering:
+- Key share: why the main line matters (percent of games)
+- Result outlier: any line with win % below 45% or above 60%
+- Actionable tip: one concrete study or repertoire tweak
+- Optionally, a tactical motif or pawn-structure theme to drill
+
+**For coachSummary:** Based on ALL tables combined:
+- **Personal Report:** Extract 3-4 highest-share lines, note win/loss deviations ≥10 points from 50%
+- **Strengths:** 2-3 positive patterns (lines with Win% ≥55% and ≥3% share, repertoire breadth)
+- **Areas to Improve:** 3-4 numbered items tied to real stats (lines with Loss% ≥55% and ≥3% share)
+- **Study Recommendations:** Bullet points with Focus, Drill, and Rationale, tailored to rating ${highestRating}
+
+**Rating band guidance for recommendations:**
+- 600-1000: basics (tactics, mate-in-one, piece safety, simple openings)
+- 1001-1400: intermediate tactics, basic endgames, opening ideas
+- 1401-1800: positional themes, deep opening prep, rook endings
+- 1801-2200+: advanced structures, novelties, psychological edges
+
+Adapt language complexity to the student's rating range. Return only valid JSON.`;
 
   try {
     const completion = await openai.chat.completions.create({
@@ -104,19 +114,21 @@ export default async function handler(
         { role: 'system', content: 'You are a world-class chess coach and data analyst.' },
         { role: 'user', content: prompt },
       ],
-      max_tokens: 1800,
+      max_tokens: 3000,
       temperature: 0.7,
     });
+
     const aiResponse = completion.choices[0]?.message?.content || 'No response from AI.';
-    let summary = null;
+    
+    let parsedResponse: any = null;
     try {
-      summary = JSON.parse(aiResponse);
+      parsedResponse = JSON.parse(aiResponse);
     } catch (e) {
       // Try to extract JSON from a possibly verbose response
       const match = aiResponse.match(/\{[\s\S]*\}/);
       if (match) {
         try {
-          summary = JSON.parse(match[0]);
+          parsedResponse = JSON.parse(match[0]);
         } catch (e2) {
           return response.status(500).json({ error: 'AI response was not valid JSON.', raw: aiResponse });
         }
@@ -124,7 +136,23 @@ export default async function handler(
         return response.status(500).json({ error: 'AI response was not valid JSON.', raw: aiResponse });
       }
     }
-    response.status(200).json({ summary });
+
+    if (!parsedResponse) {
+      return response.status(500).json({ error: 'Failed to parse AI response.' });
+    }
+
+    // Ensure tableNotes have the splitIntoPoints format for compatibility
+    if (parsedResponse.tableNotes) {
+      parsedResponse.tableNotes = parsedResponse.tableNotes.map((tableNote: any) => ({
+        ...tableNote,
+        notes: Array.isArray(tableNote.notes) ? tableNote.notes : splitIntoPoints(tableNote.notes || '')
+      }));
+    }
+
+    response.status(200).json({
+      summary: parsedResponse.coachSummary,
+      tableNotes: parsedResponse.tableNotes
+    });
   } catch (error: any) {
     console.error('OpenAI API error:', error?.response?.data || error.message || error);
     response.status(500).json({ error: 'Failed to generate analysis.', details: error?.response?.data || error.message || error });

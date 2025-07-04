@@ -10,19 +10,23 @@ interface OpeningSummaryTableProps {
   tableNumber: number;
   totalGames: number;
   rating: number;
+  tableKey?: string;
+  preloadedNotes?: string[];
 }
 
-const notesCache: Record<string, string> = {};
+const notesCache: Record<string, string[]> = {};
 
 const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({ 
   rootLine, 
   childLines, 
   tableNumber,
   totalGames,
-  rating
+  rating,
+  tableKey,
+  preloadedNotes
 }) => {
   const [selectedLine, setSelectedLine] = useState<OpeningData>(rootLine);
-  const [coachNotes, setCoachNotes] = useState<string>('');
+  const [coachNotes, setCoachNotes] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,6 +42,14 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
   const cacheKey = JSON.stringify({ tableData, rating });
 
   useEffect(() => {
+    // If preloaded notes are provided, use them instead of fetching
+    if (preloadedNotes && preloadedNotes.length > 0) {
+      setCoachNotes(preloadedNotes);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     let cancelled = false;
     if (notesCache[cacheKey]) {
       setCoachNotes(notesCache[cacheKey]);
@@ -47,7 +59,7 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
     }
     setLoading(true);
     setError(null);
-    setCoachNotes('');
+    setCoachNotes([]);
     fetch('/api/coachNotes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -72,7 +84,7 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [cacheKey]);
+  }, [cacheKey, preloadedNotes]);
 
   // Format opening name to be more concise
   const formatOpeningName = (sequence: string) => {

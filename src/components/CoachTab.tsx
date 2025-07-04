@@ -20,15 +20,17 @@ interface CoachTabProps {
 const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platform, pgn, average_rating }) => {
   const [activeSection, setActiveSection] = useState<string>("summary");
   const [coachSummary, setCoachSummary] = useState<any | null>(null);
+  const [tableNotes, setTableNotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openingsList, setOpeningsList] = useState<string[]>([]);
   const [relevantOpenings, setRelevantOpenings] = useState<string[]>([]);
   
   // --- Caching logic ---
-  const analysisKey = JSON.stringify({ pgn, username, platform, average_rating });
+  const analysisKey = JSON.stringify({ username, platform, average_rating });
   const lastKeyRef = useRef<string | null>(null);
   const lastSummaryRef = useRef<any | null>(null);
+  const lastTableNotesRef = useRef<any[]>([]);
   const lastOpeningsListRef = useRef<string[] | null>(null);
   const lastRelevantOpeningsRef = useRef<string[] | null>(null);
   
@@ -52,33 +54,58 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
     return Array.from(names);
   }
 
-  // Helper to extract only the summary tables (max 10 tables per variant, max 10 rows per table)
-  function getSummaryTables(openings: Record<ChessVariant, any>) {
-    const variants: ChessVariant[] = ['all', 'blitz', 'rapid', 'bullet'];
-    const result: Record<string, any> = {};
-    for (const variant of variants) {
-      if (!openings[variant]) continue;
-      result[variant] = {};
-      // List the table keys you want (edit as needed)
-      const tableKeys = [
-        'white2', 'black2', 'white3', 'black3', 'white4', 'black4', 'white5', 'black5',
-        'white6', 'black6', 'white7', 'black7', 'white8', 'black8', 'white10', 'black10',
-        'meaningfulWhite', 'meaningfulBlack', 'meaningfulCombined'
-      ];
-      for (const key of tableKeys) {
-        if (Array.isArray(openings[variant][key])) {
-          result[variant][key] = openings[variant][key].slice(0, 10);
-        }
+  // Helper to extract only the 'All' variant summary tables (max 10 tables, max 10 rows each, 6 columns only)
+  function getMinimalSummaryTables(openings: Record<ChessVariant, any>) {
+    const allVariant = openings['all'];
+    if (!allVariant) return [];
+    
+    const tableKeys = [
+      'white2', 'black2', 'white3', 'black3', 'white4', 'black4', 'white5', 'black5',
+      'white6', 'black6', 'white7', 'black7', 'white8', 'black8', 'white10', 'black10',
+      'meaningfulWhite', 'meaningfulBlack', 'meaningfulCombined'
+    ];
+    
+    const tables = [];
+    for (const key of tableKeys) {
+      if (Array.isArray(allVariant[key]) && allVariant[key].length > 0) {
+        // Only include the first 10 rows and only the 6 essential columns
+        const cleanTable = allVariant[key].slice(0, 10).map((row: any) => ({
+          Opening: row.Opening || getOpeningNameBySequence(row.sequence) || 'Unknown',
+          Sequence: row.sequence || row.Sequence || '',
+          'Games (N)': row.games || row['Games (N)'] || 0,
+          'Wins (%)': Math.round(row.winsPercentage || row['Wins (%)'] || 0),
+          'Draws (%)': Math.round(row.drawsPercentage || row['Draws (%)'] || 0),
+          'Losses (%)': Math.round(row.lossesPercentage || row['Losses (%)'] || 0)
+        }));
+        tables.push({
+          tableKey: key,
+          data: cleanTable
+        });
       }
-      // Optionally include totals/insights if you use them in the UI
-      if (typeof openings[variant].totalWhiteGames === 'number')
-        result[variant].totalWhiteGames = openings[variant].totalWhiteGames;
-      if (typeof openings[variant].totalBlackGames === 'number')
-        result[variant].totalBlackGames = openings[variant].totalBlackGames;
-      if (Array.isArray(openings[variant].insights))
-        result[variant].insights = openings[variant].insights;
     }
-    return result;
+    return tables.slice(0, 10); // Max 10 tables
+  }
+
+  // Get highest rating
+  function getHighestRating(ratings: any) {
+    if (!ratings) return 0;
+    return Math.max(
+      ratings.blitz || 0,
+      ratings.rapid || 0,
+      ratings.bullet || 0,
+      ratings.classical || 0
+    );
+  }
+
+  // Get total games count
+  function getTotalGames(analysis: any) {
+    return analysis.totalGames || 0;
+  }
+
+  // Helper function to get coach notes for a specific table key
+  function getTableNotes(tableKey: string): string[] {
+    const tableNote = tableNotes.find(note => note.tableKey === tableKey);
+    return tableNote ? tableNote.notes : [];
   }
 
   useEffect(() => {
@@ -86,6 +113,7 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
     setRelevantOpenings(extracted);
     if (lastKeyRef.current === analysisKey && lastSummaryRef.current) {
       setCoachSummary(lastSummaryRef.current);
+      setTableNotes(lastTableNotesRef.current);
       setOpeningsList(lastOpeningsListRef.current || []);
       setRelevantOpenings(lastRelevantOpeningsRef.current || []);
       setLoading(false);
@@ -96,27 +124,19 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
       setLoading(true);
       setError(null);
       setCoachSummary(null);
+      setTableNotes([]);
       try {
-        const summaryTables = getSummaryTables(analysis.openings);
+        const summaryTables = getMinimalSummaryTables(analysis.openings);
         const payload = {
           username,
           platform,
-          average_rating,
-          relevantOpenings: extracted,
-          openings_stats: JSON.stringify(summaryTables),
-          other_stats: JSON.stringify({
-            strengths: analysis.strengths,
-            weaknesses: analysis.weaknesses,
-            recommendations: analysis.recommendations,
-            phaseAccuracy: analysis.phaseAccuracy,
-            timePerformance: analysis.timePerformance,
-            dayPerformance: analysis.dayPerformance,
-            conversionRate: analysis.conversionRate,
-          })
+          tables: summaryTables,
+          totalGames: getTotalGames(analysis),
+          highestRating: getHighestRating(analysis.ratings)
         };
         console.log('Payload size (bytes):', JSON.stringify(payload).length);
-        console.log('openings_stats size:', payload.openings_stats.length);
-        console.log('other_stats size:', payload.other_stats.length);
+        console.log('Number of tables:', summaryTables.length);
+        console.log('Tables:', summaryTables);
         const res = await fetch('/api/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -125,10 +145,12 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
         if (!res.ok) throw new Error('Failed to fetch AI report');
         const data = await res.json();
         setCoachSummary(data.summary);
+        setTableNotes(data.tableNotes || []);
         setOpeningsList(data.summary?.openingsList || []);
         setRelevantOpenings(extracted);
         lastKeyRef.current = analysisKey;
         lastSummaryRef.current = data.summary;
+        lastTableNotesRef.current = data.tableNotes || [];
         lastOpeningsListRef.current = data.summary?.openingsList || [];
         lastRelevantOpeningsRef.current = extracted;
       } catch (err: any) {
