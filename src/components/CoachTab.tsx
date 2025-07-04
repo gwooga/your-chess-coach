@@ -7,6 +7,7 @@ import ChessAdviser from './ChessAdviser';
 import CoachSummary from './coach/CoachSummary';
 import CoachPerformance from './coach/CoachPerformance';
 import { getOpeningNameBySequence } from '@/services/chess/openingsDatabase';
+import OpeningSummaryTable from './OpeningSummaryTable';
 
 interface CoachTabProps {
   analysis: UserAnalysis;
@@ -24,6 +25,7 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
   const [error, setError] = useState<string | null>(null);
   const [openingsList, setOpeningsList] = useState<string[]>([]);
   const [relevantOpenings, setRelevantOpenings] = useState<string[]>([]);
+  const [coachSays, setCoachSays] = useState<string[][]>([]);
   
   // --- Caching logic ---
   const analysisKey = JSON.stringify({ pgn, username, platform, average_rating });
@@ -126,6 +128,7 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
       setLoading(true);
       setError(null);
       setCoachSummary(null);
+      setCoachSays([]);
       try {
         const summaryTables = getAllTabSummaryTables(analysis.openings);
         const highestRating = getHighestRating(analysis.ratings);
@@ -135,7 +138,6 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
           total_games: totalGames,
           rating: highestRating
         };
-        console.log('Payload size (bytes):', JSON.stringify(payload).length);
         const res = await fetch('/api/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -144,6 +146,7 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
         if (!res.ok) throw new Error('Failed to fetch AI report');
         const data = await res.json();
         setCoachSummary(data.summary);
+        setCoachSays(data.coach_says || []);
         setOpeningsList(data.summary?.openingsList || []);
         setRelevantOpenings(extracted);
         lastKeyRef.current = analysisKey;
@@ -198,6 +201,17 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
           </TabsContent>
         </Tabs>
       </div>
+      {summaryTables.map((table, idx) => (
+        <OpeningSummaryTable
+          key={idx}
+          rootLine={table.rootLine}
+          childLines={table.childLines}
+          tableNumber={idx + 1}
+          totalGames={table.totalGames}
+          rating={highestRating}
+          coachSays={coachSays[idx] || []}
+        />
+      ))}
     </div>
   );
 };

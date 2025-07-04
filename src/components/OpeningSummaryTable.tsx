@@ -10,6 +10,7 @@ interface OpeningSummaryTableProps {
   tableNumber: number;
   totalGames: number;
   rating: number;
+  coachSays: string[] | string;
 }
 
 const notesCache: Record<string, string> = {};
@@ -19,7 +20,8 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
   childLines, 
   tableNumber,
   totalGames,
-  rating
+  rating,
+  coachSays
 }) => {
   const [selectedLine, setSelectedLine] = useState<OpeningData>(rootLine);
   const [coachNotes, setCoachNotes] = useState<string>('');
@@ -157,15 +159,12 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
         <div className="mt-4 p-4 bg-white border rounded-lg">
           <h4 className="text-md font-semibold mb-2">Coach's notes</h4>
           <div className="space-y-2" style={{color: 'rgb(75 85 99)'}}>
-            {loading && <p>Loading coach's notes...</p>}
-            {error && <p className="text-red-500">{error}</p>}
-            {!loading && !error && Array.isArray(coachNotes) && coachNotes.length > 0 && (
-              <div>
-                {coachNotes.map((sentence: string, idx: number) => (
+            {Array.isArray(coachSays)
+              ? coachSays.map((sentence: string, idx: number) => (
                   <p key={idx}>{sentence}</p>
-                ))}
-              </div>
-            )}
+                ))
+              : <p>{coachSays}</p>
+            }
           </div>
         </div>
       </div>
