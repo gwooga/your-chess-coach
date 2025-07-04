@@ -70,19 +70,17 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
     let tablesAdded = 0;
     for (const key of tableKeys) {
       if (Array.isArray(openings[variant][key]) && tablesAdded < 10) {
-        // Only take up to 10 rows per table, and only the 6 columns needed
-        const table = openings[variant][key].slice(0, 10).map((line: any) => ({
-          Opening: getOpeningNameBySequence(line.sequence),
-          Sequence: line.sequence,
-          'Games (N)': line.games,
-          'Wins (%)': Math.round(line.winsPercentage ?? 0),
-          'Draws (%)': Math.round(line.drawsPercentage ?? 0),
-          'Losses (%)': Math.round(line.lossesPercentage ?? 0),
-        }));
+        const lines = openings[variant][key].slice(0, 10);
+        if (lines.length === 0) continue;
+        const rootLine = lines[0];
+        const childLines = lines.slice(1);
+        const totalGames = lines.reduce((sum: number, line: any) => sum + (line.games || 0), 0);
         result.push({
-          title: getOpeningNameBySequence(openings[variant][key][0]?.sequence || ''),
-          color: openings[variant][key][0]?.color || '',
-          table
+          rootLine,
+          childLines,
+          totalGames,
+          color: rootLine.color || '',
+          title: getOpeningNameBySequence(rootLine.sequence || ''),
         });
         tablesAdded++;
       }
@@ -149,13 +147,15 @@ const CoachTab: React.FC<CoachTabProps> = ({ analysis, variant, username, platfo
         });
         if (!res.ok) throw new Error('Failed to fetch AI report');
         const data = await res.json();
-        setCoachSummary(data.summary);
-        setCoachSays(data.coach_says || []);
-        setOpeningsList(data.summary?.openingsList || []);
+        // Defensive: check for new structure
+        const summaryObj = data.summary || {};
+        setCoachSummary(summaryObj.summary || {});
+        setCoachSays(summaryObj.coach_says || []);
+        setOpeningsList(summaryObj.openingsList || []);
         setRelevantOpenings(extracted);
         lastKeyRef.current = analysisKey;
-        lastSummaryRef.current = data.summary;
-        lastOpeningsListRef.current = data.summary?.openingsList || [];
+        lastSummaryRef.current = summaryObj.summary || {};
+        lastOpeningsListRef.current = summaryObj.openingsList || [];
         lastRelevantOpeningsRef.current = extracted;
       } catch (err: any) {
         setError(err.message || 'Unknown error');
