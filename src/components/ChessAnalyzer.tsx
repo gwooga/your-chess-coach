@@ -570,7 +570,7 @@ const ChessAnalyzer: React.FC = () => {
                 data={userAnalysis.openings.blitz} 
                 variant="blitz" 
                 ratings={userAnalysis.ratings}
-                tableNotes={[]}
+                tableNotes={combinedCoachData?.tableNotes || []}
               />
             </TabsContent>
             
@@ -579,7 +579,7 @@ const ChessAnalyzer: React.FC = () => {
                 data={userAnalysis.openings.rapid}
                 variant="rapid"
                 ratings={userAnalysis.ratings}
-                tableNotes={[]}
+                tableNotes={combinedCoachData?.tableNotes || []}
               />
             </TabsContent>
             
@@ -588,7 +588,7 @@ const ChessAnalyzer: React.FC = () => {
                 data={userAnalysis.openings.bullet}
                 variant="bullet"
                 ratings={userAnalysis.ratings}
-                tableNotes={[]}
+                tableNotes={combinedCoachData?.tableNotes || []}
               />
             </TabsContent>
           </Tabs>

@@ -12,6 +12,7 @@ interface OpeningSummaryTableProps {
   rating: number;
   tableKey?: string;
   preloadedNotes?: string[];
+  variant?: string;
 }
 
 const notesCache: Record<string, string[]> = {};
@@ -23,7 +24,8 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
   totalGames,
   rating,
   tableKey,
-  preloadedNotes
+  preloadedNotes,
+  variant
 }) => {
   const [selectedLine, setSelectedLine] = useState<OpeningData>(rootLine);
   const [coachNotes, setCoachNotes] = useState<string[]>([]);
@@ -45,6 +47,14 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
     // If preloaded notes are provided, use them instead of fetching
     if (preloadedNotes && preloadedNotes.length > 0) {
       setCoachNotes(preloadedNotes);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    // If variant is not 'all' and no preloaded notes, show upgrade message instead of loading
+    if (variant && variant !== 'all' && (!preloadedNotes || preloadedNotes.length === 0)) {
+      setCoachNotes([]);
       setLoading(false);
       setError(null);
       return;
@@ -84,7 +94,7 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [cacheKey, preloadedNotes]);
+  }, [cacheKey, preloadedNotes, variant]);
 
   // Format opening name to be more concise
   const formatOpeningName = (sequence: string) => {
@@ -176,6 +186,11 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
                 {coachNotes.map((sentence: string, idx: number) => (
                   <p key={idx}>{sentence}</p>
                 ))}
+              </div>
+            )}
+            {!loading && !error && (!Array.isArray(coachNotes) || coachNotes.length === 0) && variant && variant !== 'all' && (
+              <div className="text-center py-4">
+                <p className="text-gray-600 font-medium">Upgrade to Premium</p>
               </div>
             )}
           </div>

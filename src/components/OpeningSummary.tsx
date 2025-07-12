@@ -121,7 +121,8 @@ const OpeningSummary: React.FC<OpeningSummaryProps> = ({ data, variant, rating, 
             tableNumber={index + 1}
             totalGames={table.totalGames}
             rating={rating}
-            preloadedNotes={tableNotes && tableNotes[index] ? tableNotes[index] : undefined}
+            preloadedNotes={tableNotes && tableNotes[index] && tableNotes[index].notes ? tableNotes[index].notes : undefined}
+            variant={variant}
           />
         ))
       ) : (
