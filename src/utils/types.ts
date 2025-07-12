@@ -33,6 +33,12 @@ export interface OpeningData {
   impact?: number; // Added impact field for ranking
 }
 
+export interface OpeningSummaryTable {
+  rootLine: OpeningData;
+  childLines: OpeningData[];
+  totalGames: number;
+}
+
 export interface OpeningsTableData {
   white2: OpeningData[];
   black2: OpeningData[];
@@ -55,6 +61,7 @@ export interface OpeningsTableData {
   meaningfulWhite?: OpeningData[];
   meaningfulBlack?: OpeningData[];
   meaningfulCombined?: OpeningData[]; // New field for combined meaningful openings
+  openingSummaryTables?: OpeningSummaryTable[]; // Pre-computed opening summary tables
   insights?: string[];
 }
 

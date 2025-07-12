@@ -1,5 +1,5 @@
-import { OpeningData, OpeningsTableData, ChessVariant } from '../../utils/types';
-import { getOpeningName } from './openingsDatabase';
+import { OpeningData, OpeningsTableData, ChessVariant, OpeningSummaryTable } from '../../utils/types';
+import { getOpeningNameBySequence } from './openingsDatabase';
 import { pgnToFen, extractOpeningName, filterGamesByPlayerColor, cleanMoveSequence } from './chessUtils';
 
 // Analyze opening sequences based on games and user info
@@ -51,6 +51,9 @@ export const analyzeOpenings = (games: any[], username: string): {
       blackGames.length
     );
     
+    // Generate opening summary tables for this variant
+    const openingSummaryTables = generateOpeningSummaryTables(sequences, whiteGames.length, blackGames.length);
+    
     // Format opening data for different move depths
     result[variant] = {
       white2: formatOpeningData(sequences.white2, whiteGames.length, 'white'),
@@ -73,7 +76,8 @@ export const analyzeOpenings = (games: any[], username: string): {
       totalBlackGames: blackGames.length,
       meaningfulWhite,
       meaningfulBlack,
-      meaningfulCombined
+      meaningfulCombined,
+      openingSummaryTables
     };
   }
   
@@ -320,4 +324,111 @@ export const formatOpeningData = (sequences: Record<string, any>, totalGames: nu
     }))
     .sort((a: any, b: any) => b.games - a.games)
     .slice(0, 10);
+};
+
+// Generate opening summary tables (replicate the OpeningSummary component logic)
+export const generateOpeningSummaryTables = (
+  sequences: Record<string, any>, 
+  totalWhiteGames: number, 
+  totalBlackGames: number
+): OpeningSummaryTable[] => {
+  
+  // Function to extract root lines that meet criteria (>= 5% of games)
+  const extractRootLines = (colorData: Record<string, any>, totalGames: number, color: 'white' | 'black') => {
+    if (!colorData) return [];
+    
+    return Object.values(colorData)
+      .filter((line: any) => {
+        if (!line || !line.sequence) return false;
+        const sharePercentage = (line.games / totalGames) * 100;
+        return sharePercentage >= 5;
+      })
+      .sort((a: any, b: any) => b.games - a.games)
+      .slice(0, 10)
+      .map((line: any) => ({
+        ...line,
+        gamesPercentage: parseFloat((line.games / totalGames * 100).toFixed(1)),
+        winsPercentage: parseFloat((line.wins / line.games * 100).toFixed(1)),
+        drawsPercentage: parseFloat((line.draws / line.games * 100).toFixed(1)),
+        lossesPercentage: parseFloat((line.losses / line.games * 100).toFixed(1)),
+        fen: pgnToFen(line.sequence),
+        color
+      }));
+  };
+  
+  // Function to find child lines for a root
+  const findChildLines = (rootLine: any, allLines: any[], totalGames: number) => {
+    if (!rootLine || !rootLine.sequence || !allLines) return [];
+    
+    return allLines
+      .filter((line: any) => {
+        if (!line || !line.sequence) return false;
+        
+        const isChild = line.sequence !== rootLine.sequence && 
+                       line.sequence.startsWith(rootLine.sequence);
+        
+        const sharePercentage = (line.games / totalGames) * 100;
+        return isChild && sharePercentage >= 2;
+      })
+      .sort((a: any, b: any) => b.games - a.games)
+      .slice(0, 5);
+  };
+  
+  // Combine all move depths for comprehensive analysis
+  const getAllMoveDepthsForColor = (color: 'white' | 'black') => {
+    const allDepths: any[] = [];
+    
+    for (const depth of [2, 3, 4, 5, 6, 7, 8, 10]) {
+      const key = `${color}${depth}`;
+      if (sequences[key]) {
+        allDepths.push(...Object.values(sequences[key]));
+      }
+    }
+    
+    return allDepths;
+  };
+  
+  // Extract root lines for both colors
+  const whiteRootLines = extractRootLines(sequences.white2 || {}, totalWhiteGames, 'white');
+  const blackRootLines = extractRootLines(sequences.black2 || {}, totalBlackGames, 'black');
+  
+  // Get all move depths for finding child lines
+  const allWhiteMoves = getAllMoveDepthsForColor('white');
+  const allBlackMoves = getAllMoveDepthsForColor('black');
+  
+  // Prepare data for tables, combining white and black by share percentage
+  const rootLinesWithChildren = [
+    ...whiteRootLines.map(root => ({
+      rootLine: root,
+      childLines: findChildLines(root, allWhiteMoves, totalWhiteGames),
+      totalGames: totalWhiteGames
+    })),
+    ...blackRootLines.map(root => ({
+      rootLine: root,
+      childLines: findChildLines(root, allBlackMoves, totalBlackGames),
+      totalGames: totalBlackGames
+    }))
+  ];
+  
+  // Sort by share percentage (games/totalGames)
+  rootLinesWithChildren.sort((a, b) => {
+    const shareA = (a.rootLine.games / a.totalGames);
+    const shareB = (b.rootLine.games / b.totalGames);
+    return shareB - shareA;
+  });
+  
+  // Take at most 10 tables total and format properly
+  return rootLinesWithChildren.slice(0, 10).map(table => ({
+    rootLine: table.rootLine,
+    childLines: table.childLines.map((child: any) => ({
+      ...child,
+      gamesPercentage: parseFloat((child.games / table.totalGames * 100).toFixed(1)),
+      winsPercentage: parseFloat((child.wins / child.games * 100).toFixed(1)),
+      drawsPercentage: parseFloat((child.draws / child.games * 100).toFixed(1)),
+      lossesPercentage: parseFloat((child.losses / child.games * 100).toFixed(1)),
+      fen: pgnToFen(child.sequence),
+      color: table.rootLine.color
+    })),
+    totalGames: table.totalGames
+  }));
 };

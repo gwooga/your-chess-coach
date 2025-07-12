@@ -392,32 +392,26 @@ const ChessAnalyzer: React.FC = () => {
   // Helper functions for combined coach data
   const getMinimalSummaryTables = (openings: any) => {
     const allVariant = openings['all'];
-    if (!allVariant) return [];
+    if (!allVariant || !allVariant.openingSummaryTables) return [];
     
-    const tableKeys = [
-      'white2', 'black2', 'white3', 'black3', 'white4', 'black4', 'white5', 'black5',
-      'white6', 'black6', 'white7', 'black7', 'white8', 'black8', 'white10', 'black10',
-      'meaningfulWhite', 'meaningfulBlack', 'meaningfulCombined'
-    ];
+    // Use the pre-computed opening summary tables from the 'all' variant
+    const tables = allVariant.openingSummaryTables.map((table: any, index: number) => {
+      const tableData = [table.rootLine, ...table.childLines].map((line: any) => ({
+        Opening: line.name || line.sequence || 'Unknown',
+        Sequence: line.sequence || '',
+        'Games (N)': line.games || 0,
+        'Wins (%)': Math.round(line.winsPercentage || 0),
+        'Draws (%)': Math.round(line.drawsPercentage || 0),
+        'Losses (%)': Math.round(line.lossesPercentage || 0)
+      }));
+      
+      return {
+        tableKey: `summary_table_${index}`,
+        data: tableData
+      };
+    });
     
-    const tables = [];
-    for (const key of tableKeys) {
-      if (Array.isArray(allVariant[key]) && allVariant[key].length > 0) {
-        const cleanTable = allVariant[key].slice(0, 10).map((row: any) => ({
-          Opening: row.Opening || row.sequence || 'Unknown',
-          Sequence: row.sequence || row.Sequence || '',
-          'Games (N)': row.games || row['Games (N)'] || 0,
-          'Wins (%)': Math.round(row.winsPercentage || row['Wins (%)'] || 0),
-          'Draws (%)': Math.round(row.drawsPercentage || row['Draws (%)'] || 0),
-          'Losses (%)': Math.round(row.lossesPercentage || row['Losses (%)'] || 0)
-        }));
-        tables.push({
-          tableKey: key,
-          data: cleanTable
-        });
-      }
-    }
-    return tables.slice(0, 10);
+    return tables;
   };
 
   const getHighestRating = (ratings: any) => {
