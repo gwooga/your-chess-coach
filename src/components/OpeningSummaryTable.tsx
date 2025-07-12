@@ -137,10 +137,10 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
               <TableRow>
                 <TableHead className="w-[180px]">Opening</TableHead>
                 <TableHead>Sequence</TableHead>
-                <TableHead className="w-[120px]">Games (N)</TableHead>
-                <TableHead className="w-[80px]" style={{color: 'rgb(22 163 74)'}}>Wins (%)</TableHead>
-                <TableHead className="w-[80px]" style={{color: 'rgb(75 85 99)'}}>Draws (%)</TableHead>
-                <TableHead className="w-[80px]" style={{color: 'rgb(220 38 38)'}}>Losses (%)</TableHead>
+                <TableHead className="w-[120px]">Games</TableHead>
+                <TableHead className="w-[80px]" style={{color: 'rgb(22 163 74)'}}>Wins</TableHead>
+                <TableHead className="w-[80px]" style={{color: 'rgb(75 85 99)'}}>Draws</TableHead>
+                <TableHead className="w-[80px]" style={{color: 'rgb(220 38 38)'}}>Losses</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

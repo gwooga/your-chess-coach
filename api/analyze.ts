@@ -58,9 +58,9 @@ export default async function handler(
   }).join('\n\n');
 
   // Create the master prompt combining both coach notes and coach summary
-  const prompt = `You are a world-class chess coach. You will analyze a student's opening performance data (sometime playing as black and sometimes playing as white) and provide both detailed table-specific notes AND an overall coaching summary.
+  const prompt = `You are a world-class chess coach. You will analyze a player's opening performance data (sometime playing as black and sometimes playing as white) and provide both detailed table-specific notes AND an overall coaching summary.
 
-**Student Information:**
+**Player Information:**
 - Username: ${username}
 - Platform: ${platform}
 - Total Games: ${totalGames}
@@ -80,44 +80,49 @@ ${formattedTables}
     // ... for each table
   ],
   "coachSummary": {
-    "personal_report": "A comprehensive summary of the student's opening performance, highlighting the most significant patterns, strengths, and areas for improvement based on all tables.",
+    "personal_report": "A comprehensive summary of your opening performance, highlighting the most significant patterns, strengths, and areas for improvement based on all tables.",
     "strengths": ["Strength 1", "Strength 2", "Strength 3"],
-    "areas_to_improve": ["1. Specific area with stats", "2. Another area with stats", "3. Third area with stats"],
-    "study_recommendations": ["• Focus: specific area - Drill: specific practice - Rationale: why this helps", "• Focus: another area - Drill: another practice - Rationale: why this helps"]
+    "areas_to_improve": ["Specific area with stats", "Another area with stats", "Third area with stats"],
+    "study_recommendations": ["Focus: specific area - Drill: specific practice - Rationale: why this helps", "Focus: another area - Drill: another practice - Rationale: why this helps"]
   }
 }
 
-**For tableNotes:** Each table should get 4-6 bullet points covering:
-- Key share: why the main line matters (percent of games)
-- Result outlier: any line with win % below 45% or above 60%
-- Actionable tip: one concrete study or repertoire tweak
-- Optionally, a tactical motif or pawn-structure theme to drill
+**IMPORTANT LANGUAGE GUIDELINES:**
+- Always use second person ("you", "your") instead of third person ("the student", "the player")
+- Write as if speaking directly to the player
+- Be conversational and personal in tone
+
+**For tableNotes:** Each table should get 4-6 bullet points with actionable insights:
+- Mention the significance of the main line (percent of games)
+- Highlight any line with win % below 45% or above 60%
+- Provide one concrete study or repertoire suggestion
+- Optionally include a tactical motif or pawn-structure theme to practice
 
 **For coachSummary:** Based on ALL tables combined:
 
 - **Personal Report:**  
-  Summarize the highest-share openings and any striking score gaps. Mention game-length disparity and any optional blunder/clock stats.  
+  Summarize your highest-share openings and any striking score gaps. Use second person throughout.
   For example:  
-    - Extract 3-4 highest-share lines from Top20 (using the gamesShare field).  
-    - Note any line where Win% or Loss% deviates by ≥10 points from 50%.  
-    - Mention average move-length difference and any auxiliary clock/blunder stat if available.
+    - Extract 3-4 highest-share lines from your repertoire
+    - Note any line where your Win% or Loss% deviates by ≥10 points from 50%
+    - Mention patterns in your game length or performance trends
 
 - **Strengths:**  
-  List 2-3 positive patterns (e.g., "wide repertoire", "good gambit score").  
+  List 2-3 positive patterns in your play (e.g., "strong repertoire breadth", "excellent gambit results").  
   For example:  
-    - A line with Win% ≥ 55% and ≥3% share  
-    - High endgame save-rate (if draw% in lost positions is high)  
+    - A line where you score Win% ≥ 55% and ≥3% share  
+    - High endgame save-rate (if draw% in difficult positions is high)  
     - Repertoire breadth if no single line >20%
 
 - **Areas to Improve:**  
-  Numbered list (3-4 items). Tie each item to real stats (e.g., "–11 vs 4.Bc4 in Classical Sicilian").  
+  List 3-4 items as bullet points (not numbered). Tie each item to real stats from your games.
   For example:  
-    - Lines with Loss% ≥ 55% and ≥3% share  
-    - Any huge share line (≥10%) that is only break-even  
-    - Clock or blunder issue if computed
+    - Lines where you lose ≥ 55% and ≥3% share  
+    - Any high-frequency line (≥10%) where you're only breaking even  
+    - Specific openings that need attention
 
 - **Study Recommendations:**  
-  In bullet points, write Focus, Drill, and Rationale. Tailor drills to the ratingBand (see mapping below, do NOT mention the band explicitly). Link each drill back to an Area-to-Improve item.
+  Bullet points with Focus, Drill, and Rationale. Tailor drills to the rating level. Link each drill back to an Area-to-Improve item.
 
 **Rating band guidance for recommendations:**
 - 600-1000: basics (tactics, mate-in-one, piece safety, simple openings)
@@ -125,7 +130,7 @@ ${formattedTables}
 - 1401-1800: positional themes, deep opening prep, rook endings
 - 1801-2200+: advanced structures, novelties, psychological edges
 
-Adapt language complexity to the student's rating range. Return only valid JSON.`;
+Adapt language complexity to the player's rating range. Always use second person language. Return only valid JSON.`;
 
   try {
     const completion = await openai.chat.completions.create({

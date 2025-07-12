@@ -114,7 +114,7 @@ const MeaningfulOpeningsTable: React.FC<MeaningfulOpeningsTableProps> = ({ data,
             <TableHead>Opening</TableHead>
             <TableHead>Sequence</TableHead>
             <TableHead className="cursor-pointer" onClick={() => handleSort('games')}>
-              Games (N) {getSortIcon('games')}
+              Games {getSortIcon('games')}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Info className="h-4 w-4 text-muted-foreground cursor-help ml-1" />
@@ -125,13 +125,13 @@ const MeaningfulOpeningsTable: React.FC<MeaningfulOpeningsTableProps> = ({ data,
               </Tooltip>
             </TableHead>
             <TableHead className="cursor-pointer" style={{color: 'rgb(22 163 74)'}} onClick={() => handleSort('winsPercentage')}>
-              Wins (%) {getSortIcon('winsPercentage')}
+              Wins {getSortIcon('winsPercentage')}
             </TableHead>
             <TableHead className="cursor-pointer" style={{color: 'rgb(75 85 99)'}} onClick={() => handleSort('drawsPercentage')}>
-              Draws (%) {getSortIcon('drawsPercentage')}
+              Draws {getSortIcon('drawsPercentage')}
             </TableHead>
             <TableHead className="cursor-pointer" style={{color: 'rgb(220 38 38)'}} onClick={() => handleSort('lossesPercentage')}>
-              Losses (%) {getSortIcon('lossesPercentage')}
+              Losses {getSortIcon('lossesPercentage')}
             </TableHead>
             <TableHead>Board</TableHead>
           </TableRow>

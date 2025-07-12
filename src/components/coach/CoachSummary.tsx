@@ -52,11 +52,11 @@ const CoachSummary: React.FC<CoachSummaryProps> = ({
                 <AlertTriangle className="mr-2 h-6 w-6 text-amber-500" />
                 <h3 className="text-xl font-bold">Areas to Improve</h3>
               </div>
-              <ol className="list-decimal pl-10 space-y-2">
+              <ul className="list-disc pl-10 space-y-2">
                 {areasToImprove && areasToImprove.map((item, i) => (
                   <li key={i} className="text-gray-700">{item}</li>
                 ))}
-              </ol>
+              </ul>
             </div>
             {/* Recommendations Section */}
             <div>
