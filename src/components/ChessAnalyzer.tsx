@@ -27,7 +27,6 @@ const ChessAnalyzer: React.FC = () => {
     summary: any;
     tableNotes: any[];
   } | null>(null);
-  const [coachDataLoading, setCoachDataLoading] = useState(false);
   
   // New loading states for two-phase loading
   const [loadingPhase, setLoadingPhase] = useState<'download' | 'analysis' | 'complete'>('download');
@@ -76,6 +75,7 @@ const ChessAnalyzer: React.FC = () => {
   const startAnalysisPhase = React.useCallback(() => {
     setLoadingPhase('analysis');
     setAnalysisStartTime(Date.now());
+    // Reset progress to 0 for clean transition
     setDownloadProgress(0);
     setDisplayedProgress(0);
     setLoadingText(analysisTexts[0]);
@@ -185,6 +185,82 @@ const ChessAnalyzer: React.FC = () => {
     };
   }, [isLoading, loadingPhase, analysisStartTime]);
 
+  // Helper to calculate average rating
+  const getAverageRating = (ratings: any) => {
+    if (!ratings) return '';
+    const values = Object.values(ratings).filter((v) => typeof v === 'number');
+    if (values.length === 0) return '';
+    return Math.round(values.reduce((a, b) => a + (b as number), 0) / values.length);
+  };
+
+  // Helper functions for combined coach data
+  const getMinimalSummaryTables = (openings: any) => {
+    const allVariant = openings['all'];
+    if (!allVariant || !allVariant.openingSummaryTables) return [];
+    
+    // Use the pre-computed opening summary tables from the 'all' variant
+    const tables = allVariant.openingSummaryTables.map((table: any, index: number) => {
+      const tableData = [table.rootLine, ...table.childLines].map((line: any) => ({
+        Opening: line.name || line.sequence || 'Unknown',
+        Sequence: line.sequence || '',
+        'Games (N)': line.games || 0,
+        'Wins (%)': Math.round(line.winsPercentage || 0),
+        'Draws (%)': Math.round(line.drawsPercentage || 0),
+        'Losses (%)': Math.round(line.lossesPercentage || 0)
+      }));
+      
+      return {
+        tableKey: `summary_table_${index}`,
+        data: tableData
+      };
+    });
+    
+    return tables;
+  };
+
+  const getHighestRating = (ratings: any) => {
+    if (!ratings) return 0;
+    return Math.max(
+      ratings.blitz || 0,
+      ratings.rapid || 0,
+      ratings.bullet || 0,
+      ratings.classical || 0
+    );
+  };
+
+  // Fetch combined coach data
+  const fetchCombinedCoachData = async (analysis: UserAnalysis, userInfo: UserInfo) => {
+    try {
+      const summaryTables = getMinimalSummaryTables(analysis.openings);
+      const payload = {
+        username: userInfo.username,
+        platform: userInfo.platform,
+        tables: summaryTables,
+        totalGames: 589, // Use the actual games count from console log
+        highestRating: getHighestRating(analysis.ratings)
+      };
+      
+      console.log('Combined coach data payload size (bytes):', JSON.stringify(payload).length);
+      
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!res.ok) throw new Error('Failed to fetch combined coach data');
+      const data = await res.json();
+      
+      return {
+        summary: data.summary,
+        tableNotes: data.tableNotes || []
+      };
+    } catch (error) {
+      console.error('Failed to fetch combined coach data:', error);
+      throw error;
+    }
+  };
+
   const handleUserSubmit = async (info: UserInfo, selectedTimeRange: TimeRange) => {
     setIsLoading(true);
     setUserInfo(info);
@@ -215,18 +291,18 @@ const ChessAnalyzer: React.FC = () => {
       // Phase 2: Start analysis phase
       startAnalysisPhase();
       
-      // Run analysis and AI processing in parallel
-      const [analysis] = await Promise.all([
-        analyzeChessData({ 
-          games, 
-          info, 
-          timeRange: selectedTimeRange 
-        }),
-        // Ensure minimum loading time for better UX
-        new Promise(resolve => setTimeout(resolve, 2000))
-      ]);
+      // Run analysis first, then AI processing
+      const analysis = await analyzeChessData({ 
+        games, 
+        info, 
+        timeRange: selectedTimeRange 
+      });
+      
+      // Now fetch coach data using the analysis result
+      const coachData = await fetchCombinedCoachData(analysis, info);
       
       setUserAnalysis(analysis);
+      setCombinedCoachData(coachData);
       
       // Store PGN for AI
       setPgn(games.map(g => g.pgn).join('\n\n'));
@@ -296,18 +372,18 @@ const ChessAnalyzer: React.FC = () => {
       // Start analysis phase
       startAnalysisPhase();
       
-      // Run analysis
-      const [analysis] = await Promise.all([
-        analyzeChessData({ 
-          games: filteredGames, 
-          info: uploadUserInfo, 
-          timeRange: 'last90' // Default time range for uploads
-        }),
-        // Ensure minimum loading time for better UX
-        new Promise(resolve => setTimeout(resolve, 2000))
-      ]);
+      // Run analysis first, then AI processing
+      const analysis = await analyzeChessData({ 
+        games: filteredGames, 
+        info: uploadUserInfo, 
+        timeRange: 'last90' // Default time range for uploads
+      });
+      
+      // Now fetch coach data using the analysis result
+      const coachData = await fetchCombinedCoachData(analysis, uploadUserInfo);
       
       setUserAnalysis(analysis);
+      setCombinedCoachData(coachData);
       
       // Store uploaded PGN for AI
       setPgn(pgnContent);
@@ -390,18 +466,18 @@ const ChessAnalyzer: React.FC = () => {
         // Start analysis phase
         startAnalysisPhase();
         
-        // Analyze the filtered games
-        const [analysis] = await Promise.all([
-          analyzeChessData({
-            games: filteredGames,
-            info: userInfo,
-            timeRange: value
-          }),
-          // Ensure minimum loading time for better UX
-          new Promise(resolve => setTimeout(resolve, 1500))
-        ]);
+        // Analyze the filtered games first, then fetch coach data
+        const analysis = await analyzeChessData({
+          games: filteredGames,
+          info: userInfo,
+          timeRange: value
+        });
+        
+        // Now fetch coach data using the analysis result
+        const coachData = await fetchCombinedCoachData(analysis, userInfo);
         
         setUserAnalysis(analysis);
+        setCombinedCoachData(coachData);
         
         // Complete loading
         setLoadingPhase('complete');
@@ -429,18 +505,18 @@ const ChessAnalyzer: React.FC = () => {
         // Start analysis phase
         startAnalysisPhase();
         
-        // Analyze the data
-        const [analysis] = await Promise.all([
-          analyzeChessData({ 
-            games, 
-            info: userInfo, 
-            timeRange: value 
-          }),
-          // Ensure minimum loading time for better UX
-          new Promise(resolve => setTimeout(resolve, 1500))
-        ]);
+        // Analyze the data first, then fetch coach data
+        const analysis = await analyzeChessData({ 
+          games, 
+          info: userInfo, 
+          timeRange: value 
+        });
+        
+        // Now fetch coach data using the analysis result
+        const coachData = await fetchCombinedCoachData(analysis, userInfo);
         
         setUserAnalysis(analysis);
+        setCombinedCoachData(coachData);
         
         // Complete loading
         setLoadingPhase('complete');
@@ -456,90 +532,6 @@ const ChessAnalyzer: React.FC = () => {
       setIsLoading(false);
     }
   };
-
-  // Helper to calculate average rating
-  const getAverageRating = (ratings: any) => {
-    if (!ratings) return '';
-    const values = Object.values(ratings).filter((v) => typeof v === 'number');
-    if (values.length === 0) return '';
-    return Math.round(values.reduce((a, b) => a + (b as number), 0) / values.length);
-  };
-
-  // Helper functions for combined coach data
-  const getMinimalSummaryTables = (openings: any) => {
-    const allVariant = openings['all'];
-    if (!allVariant || !allVariant.openingSummaryTables) return [];
-    
-    // Use the pre-computed opening summary tables from the 'all' variant
-    const tables = allVariant.openingSummaryTables.map((table: any, index: number) => {
-      const tableData = [table.rootLine, ...table.childLines].map((line: any) => ({
-        Opening: line.name || line.sequence || 'Unknown',
-        Sequence: line.sequence || '',
-        'Games (N)': line.games || 0,
-        'Wins (%)': Math.round(line.winsPercentage || 0),
-        'Draws (%)': Math.round(line.drawsPercentage || 0),
-        'Losses (%)': Math.round(line.lossesPercentage || 0)
-      }));
-      
-      return {
-        tableKey: `summary_table_${index}`,
-        data: tableData
-      };
-    });
-    
-    return tables;
-  };
-
-  const getHighestRating = (ratings: any) => {
-    if (!ratings) return 0;
-    return Math.max(
-      ratings.blitz || 0,
-      ratings.rapid || 0,
-      ratings.bullet || 0,
-      ratings.classical || 0
-    );
-  };
-
-  // Fetch combined coach data when analysis is available
-  useEffect(() => {
-    if (!userAnalysis || !userInfo) return;
-    
-    const fetchCombinedCoachData = async () => {
-      setCoachDataLoading(true);
-      try {
-        const summaryTables = getMinimalSummaryTables(userAnalysis.openings);
-        const payload = {
-          username: userInfo.username,
-          platform: userInfo.platform,
-          tables: summaryTables,
-          totalGames: 589, // Use the actual games count from console log
-          highestRating: getHighestRating(userAnalysis.ratings)
-        };
-        
-        console.log('Combined coach data payload size (bytes):', JSON.stringify(payload).length);
-        
-        const res = await fetch('/api/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        
-        if (!res.ok) throw new Error('Failed to fetch combined coach data');
-        const data = await res.json();
-        
-        setCombinedCoachData({
-          summary: data.summary,
-          tableNotes: data.tableNotes || []
-        });
-      } catch (error) {
-        console.error('Failed to fetch combined coach data:', error);
-      } finally {
-        setCoachDataLoading(false);
-      }
-    };
-    
-    fetchCombinedCoachData();
-  }, [userAnalysis, userInfo]);
 
   return (
     <div className="container py-8">
@@ -618,7 +610,7 @@ const ChessAnalyzer: React.FC = () => {
                 pgn={pgn}
                 average_rating={getAverageRating(userAnalysis.ratings)}
                 combinedCoachData={combinedCoachData}
-                coachDataLoading={coachDataLoading}
+                coachDataLoading={false}
               />
             </TabsContent>
             
