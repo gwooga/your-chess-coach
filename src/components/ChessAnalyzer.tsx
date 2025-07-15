@@ -28,6 +28,11 @@ const ChessAnalyzer: React.FC = () => {
     tableNotes: any[];
   } | null>(null);
   const [coachDataLoading, setCoachDataLoading] = useState(false);
+  
+  // New loading states for two-phase loading
+  const [loadingPhase, setLoadingPhase] = useState<'download' | 'analysis' | 'complete'>('download');
+  const [loadingText, setLoadingText] = useState<string>('Downloading games...');
+  const [analysisStartTime, setAnalysisStartTime] = useState<number | null>(null);
 
   // Track loader timing for intermediate progress
   const loaderRef = React.useRef({
@@ -35,9 +40,25 @@ const ChessAnalyzer: React.FC = () => {
     lastRealTime: 0,
     intermediateTimeout: null as null | ReturnType<typeof setTimeout>,
     interval: null as null | ReturnType<typeof setInterval>,
+    textInterval: null as null | ReturnType<typeof setInterval>,
     realProgress: 0,
     platform: 'chess.com' as Platform,
   });
+
+  // Analysis loading text phases
+  const analysisTexts = [
+    'Analyzing your games...',
+    'This should take about ~40 more seconds',
+    'Crunching move-by-move data',
+    'Running deep engine evaluations',
+    'We\'re using our best AI engine for best results',
+    'Comparing results to similar ratings',
+    'Optimizing results for clarity',
+    'Polishing the final report',
+    'Generating visualizations',
+    'Double-checking for accuracy',
+    'Wrapping up… almost ready to reveal insights'
+  ];
 
   // Accurate milestone arrays based on backend reporting
   const chessComMilestones = [0, 12, 25, 37, 50, 63, 75, 84, 100];
@@ -51,11 +72,31 @@ const ChessAnalyzer: React.FC = () => {
     setDownloadProgress(progress);
   }, []);
 
+  // Analysis phase progress simulation
+  const startAnalysisPhase = React.useCallback(() => {
+    setLoadingPhase('analysis');
+    setAnalysisStartTime(Date.now());
+    setDownloadProgress(0);
+    setDisplayedProgress(0);
+    setLoadingText(analysisTexts[0]);
+    
+    // Start text rotation
+    let textIndex = 0;
+    const textInterval = setInterval(() => {
+      textIndex = (textIndex + 1) % analysisTexts.length;
+      setLoadingText(analysisTexts[textIndex]);
+    }, 4000); // Change text every 4 seconds
+    
+    // Store interval for cleanup
+    loaderRef.current.textInterval = textInterval;
+  }, [analysisTexts]);
+
   // Continuous fake-progress animation effect
   React.useEffect(() => {
     if (!isLoading) {
       setDisplayedProgress(0);
       if (loaderRef.current.interval) clearInterval(loaderRef.current.interval);
+      if (loaderRef.current.textInterval) clearInterval(loaderRef.current.textInterval);
       return;
     }
 
@@ -63,43 +104,74 @@ const ChessAnalyzer: React.FC = () => {
 
     loaderRef.current.interval = setInterval(() => {
       setDisplayedProgress((prev) => {
-        const realProgress = loaderRef.current.realProgress;
+        if (loadingPhase === 'download') {
+          const realProgress = loaderRef.current.realProgress;
 
-        // If loading is done, go to 100 and stop
-        if (realProgress >= 100) {
-          if (loaderRef.current.interval) clearInterval(loaderRef.current.interval);
-          return 100;
-        }
-
-        const milestones =
-          loaderRef.current.platform === 'lichess'
-            ? lichessMilestones
-            : chessComMilestones;
-
-        // Find the index of the milestone we're currently at or have passed
-        let currentMilestoneIndex = -1;
-        for (let i = milestones.length - 1; i >= 0; i--) {
-          if (realProgress >= milestones[i]) {
-            currentMilestoneIndex = i;
-            break;
+          // If download is done, go to 100 and stop
+          if (realProgress >= 100) {
+            if (loaderRef.current.interval) clearInterval(loaderRef.current.interval);
+            return 100;
           }
+
+          const milestones =
+            loaderRef.current.platform === 'lichess'
+              ? lichessMilestones
+              : chessComMilestones;
+
+          // Find the index of the milestone we're currently at or have passed
+          let currentMilestoneIndex = -1;
+          for (let i = milestones.length - 1; i >= 0; i--) {
+            if (realProgress >= milestones[i]) {
+              currentMilestoneIndex = i;
+              break;
+            }
+          }
+          
+          const nextMilestone = milestones[currentMilestoneIndex + 1] || 100;
+
+          // If displayed progress is already at the next milestone, just wait
+          if (prev >= nextMilestone) {
+            return prev;
+          }
+
+          // Move faster to catch up to real progress, then move slowly
+          const gap = Math.max(0, realProgress - prev);
+          const increment = 0.25 + gap / 10; // Base speed + catch-up speed
+
+          const newProgress = prev + increment;
+
+          // Animate up to the next milestone, but not past it
+          return Math.min(newProgress, nextMilestone);
+        } else if (loadingPhase === 'analysis') {
+          // Analysis phase: simulate 1-minute loading (0-90%) then slower to 100%
+          const now = Date.now();
+          const elapsed = now - (analysisStartTime || now);
+          const oneMinute = 60000; // 60 seconds
+          const thirtySeconds = 30000; // 30 seconds
+          
+          let targetProgress = 0;
+          
+          if (elapsed <= oneMinute) {
+            // 0-90% in 1 minute with easing (start fast, slow down)
+            const t = elapsed / oneMinute;
+            // Ease-out curve: start fast, slow down
+            const eased = 1 - Math.pow(1 - t, 3);
+            targetProgress = eased * 90;
+          } else {
+            // 90-100% in next 30 seconds at constant speed
+            const overTime = elapsed - oneMinute;
+            const extraProgress = Math.min(overTime / thirtySeconds, 1) * 10;
+            targetProgress = 90 + extraProgress;
+          }
+          
+          // Smooth animation towards target
+          const diff = targetProgress - prev;
+          const increment = Math.max(0.1, diff * 0.1);
+          
+          return Math.min(prev + increment, 100);
         }
         
-        const nextMilestone = milestones[currentMilestoneIndex + 1] || 100;
-
-        // If displayed progress is already at the next milestone, just wait
-        if (prev >= nextMilestone) {
-          return prev;
-        }
-
-        // Move faster to catch up to real progress, then move slowly
-        const gap = Math.max(0, realProgress - prev);
-        const increment = 0.25 + gap / 10; // Base speed + catch-up speed
-
-        const newProgress = prev + increment;
-
-        // Animate up to the next milestone, but not past it
-        return Math.min(newProgress, nextMilestone);
+        return prev;
       });
     }, 75); // Update interval for smoother animation
 
@@ -107,22 +179,22 @@ const ChessAnalyzer: React.FC = () => {
       if (loaderRef.current.interval) {
         clearInterval(loaderRef.current.interval);
       }
+      if (loaderRef.current.textInterval) {
+        clearInterval(loaderRef.current.textInterval);
+      }
     };
-  }, [isLoading, setProgressWithContinuousFake]);
+  }, [isLoading, loadingPhase, analysisStartTime]);
 
   const handleUserSubmit = async (info: UserInfo, selectedTimeRange: TimeRange) => {
     setIsLoading(true);
     setUserInfo(info);
     setTimeRange(selectedTimeRange);
     setDownloadProgress(0);
+    setLoadingPhase('download');
+    setLoadingText('Downloading games...');
     
     try {
-      toast({
-        title: "Starting download",
-        description: `Downloading games for ${info.username} from ${info.platform}...`,
-      });
-      
-      // Download the PGN data first
+      // Phase 1: Download games
       const games = await downloadPGN(
         info.username, 
         info.platform, 
@@ -140,27 +212,29 @@ const ChessAnalyzer: React.FC = () => {
         return;
       }
       
-      toast({
-        title: "Download complete",
-        description: `Successfully downloaded ${games.length} games. Starting analysis...`,
-      });
+      // Phase 2: Start analysis phase
+      startAnalysisPhase();
       
-      // Now analyze the data
-      const analysis = await analyzeChessData({ 
-        games, 
-        info, 
-        timeRange: selectedTimeRange 
-      });
+      // Run analysis and AI processing in parallel
+      const [analysis] = await Promise.all([
+        analyzeChessData({ 
+          games, 
+          info, 
+          timeRange: selectedTimeRange 
+        }),
+        // Ensure minimum loading time for better UX
+        new Promise(resolve => setTimeout(resolve, 2000))
+      ]);
       
       setUserAnalysis(analysis);
       
       // Store PGN for AI
       setPgn(games.map(g => g.pgn).join('\n\n'));
       
-      toast({
-        title: "Analysis complete",
-        description: `Successfully analyzed ${games.length} games for ${info.username}!`,
-      });
+      // Complete loading
+      setLoadingPhase('complete');
+      setIsLoading(false);
+      
     } catch (error) {
       console.error("Failed to fetch or analyze data:", error);
       toast({
@@ -168,7 +242,6 @@ const ChessAnalyzer: React.FC = () => {
         description: "Failed to fetch or analyze chess games. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -176,14 +249,14 @@ const ChessAnalyzer: React.FC = () => {
   const handlePgnUpload = async (pgnContent: string) => {
     setIsLoading(true);
     setDownloadProgress(0);
+    setLoadingPhase('download');
+    setLoadingText('Processing PGN file...');
     
     try {
-      toast({
-        title: "Processing PGN file",
-        description: "Parsing uploaded games...",
-      });
-      
       console.log("Parsing PGN content, length:", pgnContent.length);
+      
+      // Simulate download progress for PGN parsing
+      setDownloadProgress(25);
       
       // Parse the uploaded PGN content
       const parsedGames = parsePgnContent(pgnContent);
@@ -200,16 +273,13 @@ const ChessAnalyzer: React.FC = () => {
         return;
       }
       
+      setDownloadProgress(75);
+      
       // Store all the parsed games to filter later by time range
       setAllUploadedGames(parsedGames);
       
       // Filter games by time range
       const filteredGames = filterGamesByTimeRange(parsedGames, 'last90'); // Default time range
-      
-      toast({
-        title: "Processing complete",
-        description: `Successfully processed ${parsedGames.length} games. Analyzing ${filteredGames.length} games from the selected time period...`,
-      });
       
       // Determine the player's username from the games
       let playerUsername = determinePlayerUsername(parsedGames);
@@ -223,22 +293,29 @@ const ChessAnalyzer: React.FC = () => {
       setUserInfo(uploadUserInfo);
       setDownloadProgress(100);
       
-      // Now analyze the data
-      const analysis = await analyzeChessData({ 
-        games: filteredGames, 
-        info: uploadUserInfo, 
-        timeRange: 'last90' // Default time range for uploads
-      });
+      // Start analysis phase
+      startAnalysisPhase();
+      
+      // Run analysis
+      const [analysis] = await Promise.all([
+        analyzeChessData({ 
+          games: filteredGames, 
+          info: uploadUserInfo, 
+          timeRange: 'last90' // Default time range for uploads
+        }),
+        // Ensure minimum loading time for better UX
+        new Promise(resolve => setTimeout(resolve, 2000))
+      ]);
       
       setUserAnalysis(analysis);
       
       // Store uploaded PGN for AI
       setPgn(pgnContent);
       
-      toast({
-        title: "Analysis complete",
-        description: `Successfully analyzed ${filteredGames.length} games from your PGN file!`,
-      });
+      // Complete loading
+      setLoadingPhase('complete');
+      setIsLoading(false);
+      
     } catch (error) {
       console.error("Failed to process or analyze PGN data:", error);
       toast({
@@ -246,7 +323,6 @@ const ChessAnalyzer: React.FC = () => {
         description: "Failed to process or analyze the PGN file. Please check the file format and try again.",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -300,6 +376,8 @@ const ChessAnalyzer: React.FC = () => {
     setTimeRange(value);
     setIsLoading(true);
     setDownloadProgress(0);
+    setLoadingPhase('download');
+    setLoadingText('Updating time range...');
     
     try {
       // Handle different paths for uploaded PGN vs APIs
@@ -307,33 +385,30 @@ const ChessAnalyzer: React.FC = () => {
         // For uploaded games, we filter the already parsed games by the new time range
         const filteredGames = filterGamesByTimeRange(allUploadedGames, value);
         
-        toast({
-          title: "Filtering games",
-          description: `Analyzing ${filteredGames.length} games from the selected time period...`,
-        });
-        
         setDownloadProgress(100);
         
+        // Start analysis phase
+        startAnalysisPhase();
+        
         // Analyze the filtered games
-        const analysis = await analyzeChessData({
-          games: filteredGames,
-          info: userInfo,
-          timeRange: value
-        });
+        const [analysis] = await Promise.all([
+          analyzeChessData({
+            games: filteredGames,
+            info: userInfo,
+            timeRange: value
+          }),
+          // Ensure minimum loading time for better UX
+          new Promise(resolve => setTimeout(resolve, 1500))
+        ]);
         
         setUserAnalysis(analysis);
         
-        toast({
-          title: "Analysis complete",
-          description: `Successfully analyzed ${filteredGames.length} games from your PGN file!`,
-        });
+        // Complete loading
+        setLoadingPhase('complete');
+        setIsLoading(false);
+        
       } else {
         // For API platforms, download games with the new time range
-        toast({
-          title: "Updating time range",
-          description: `Downloading games for ${userInfo.username} with new time range...`,
-        });
-        
         const games = await downloadPGN(
           userInfo.username, 
           userInfo.platform, 
@@ -351,23 +426,25 @@ const ChessAnalyzer: React.FC = () => {
           return;
         }
         
-        toast({
-          title: "Download complete",
-          description: `Successfully downloaded ${games.length} games. Starting analysis...`,
-        });
+        // Start analysis phase
+        startAnalysisPhase();
         
-        // Now analyze the data
-        const analysis = await analyzeChessData({ 
-          games, 
-          info: userInfo, 
-          timeRange: value 
-        });
+        // Analyze the data
+        const [analysis] = await Promise.all([
+          analyzeChessData({ 
+            games, 
+            info: userInfo, 
+            timeRange: value 
+          }),
+          // Ensure minimum loading time for better UX
+          new Promise(resolve => setTimeout(resolve, 1500))
+        ]);
+        
         setUserAnalysis(analysis);
         
-        toast({
-          title: "Analysis complete",
-          description: `Successfully analyzed ${games.length} games for ${userInfo.username}!`,
-        });
+        // Complete loading
+        setLoadingPhase('complete');
+        setIsLoading(false);
       }
     } catch (error) {
       console.error("Failed to fetch or analyze data:", error);
@@ -376,7 +453,6 @@ const ChessAnalyzer: React.FC = () => {
         description: "Failed to fetch or analyze chess games. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -474,9 +550,9 @@ const ChessAnalyzer: React.FC = () => {
       {isLoading && (
         <div className="mb-8">
           <p className="mb-2 text-sm text-muted-foreground">
-            {displayedProgress < 100 
-              ? `Downloading games: ${Math.floor(displayedProgress)}%` 
-              : "Analyzing games..."}
+            {loadingPhase === 'download' 
+              ? `${loadingText} ${Math.floor(displayedProgress)}%` 
+              : loadingText}
           </p>
           <Progress value={displayedProgress} className="h-2" />
         </div>
@@ -517,11 +593,7 @@ const ChessAnalyzer: React.FC = () => {
             </div>
           </div>
           
-          {coachDataLoading && (
-            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-blue-700">Loading AI coaching analysis...</p>
-            </div>
-          )}
+
           
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid grid-cols-5 mb-8">
