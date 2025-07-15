@@ -125,21 +125,14 @@ const processGames = (games: any[], sequences: Record<string, any>, color: 'whit
     // Determine the result from the user's perspective based on their color
     let userResult: 'win' | 'draw' | 'loss' = 'draw';
     
-    // Get the raw PGN result
-    let pgnResult = '1/2-1/2'; // Default to draw
-    if (game.headers && game.headers.Result) {
-      pgnResult = game.headers.Result;
-    }
-    
-    // Convert PGN result to user's perspective
-    if (pgnResult === '1/2-1/2') {
-      userResult = 'draw';
-    } else if (color === 'white') {
-      // User played White
-      userResult = pgnResult === '1-0' ? 'win' : 'loss';
+    // Use the already calculated result from the user's perspective
+    if (color === 'white' && game.white && game.white.result) {
+      userResult = game.white.result;
+    } else if (color === 'black' && game.black && game.black.result) {
+      userResult = game.black.result;
     } else {
-      // User played Black
-      userResult = pgnResult === '0-1' ? 'win' : 'loss';
+      // Fallback to the generic result field
+      userResult = game.result || 'draw';
     }
     
     // Clean the moves string before splitting into move pairs
