@@ -49,4 +49,4 @@ The tool will output a PGN file named `<username>_<period>_<raw|eval>.pgn` conta
 
 - When fetching from Chess.com with analysis, Stockfish must be installed and available in your PATH.
 - Lichess API already provides computer evaluations when `--need_analysis` is used.
-- The tool is limited to fetching a maximum of 3000 games from Lichess due to API restrictions.
+- The tool is limited to fetching a maximum of 300 games from Lichess due to API restrictions.

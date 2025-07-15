@@ -305,8 +305,18 @@ const downloadChessComPGN = async (
         console.error(`Error fetching from ${archiveUrl}:`, error);
       }
     }
+    
+    // Step 4: Filter games by the exact date range (not just by month)
+    const filteredGames = allGames.filter(game => {
+      const gameDate = parsePgnDate(game.date);
+      if (!gameDate) return true; // Include games with invalid dates
+      return gameDate >= cutoffDate;
+    });
+    
+    console.log(`Chess.com download: Found ${allGames.length} total games, ${filteredGames.length} within date range`);
+    
     setProgress(progressSteps[progressSteps.length - 1]);
-    return allGames;
+    return filteredGames;
   } catch (error) {
     console.error("Error downloading Chess.com PGN:", error);
     console.error('Download failed: Failed to download games from Chess.com');
