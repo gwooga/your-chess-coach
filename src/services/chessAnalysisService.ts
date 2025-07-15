@@ -47,7 +47,7 @@ export const analyzeChessData = async (data: {
     const { openings, totalWhiteGames, totalBlackGames } = analyzeOpenings(games, info.username);
     
     // Generate time analysis
-    const { dayPerformance, timePerformance } = generateTimeAnalysis(games);
+    const { dayPerformance, timePerformance } = generateTimeAnalysis(games, info.username);
     
     // Find best and worst time slots/days for insights
     const { bestTimeSlot, worstTimeSlot, bestDay, worstDay } = findBestAndWorstPerformances(

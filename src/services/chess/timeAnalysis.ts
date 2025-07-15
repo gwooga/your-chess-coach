@@ -1,7 +1,7 @@
 import { DayPerformance, TimeSlotPerformance } from '../../utils/types';
 
 // Generate day and time performance data
-export const generateTimeAnalysis = (games: any[]): { 
+export const generateTimeAnalysis = (games: any[], username?: string): { 
   dayPerformance: DayPerformance[],
   timePerformance: TimeSlotPerformance[]
 } => {
@@ -56,8 +56,42 @@ export const generateTimeAnalysis = (games: any[]): {
       }
     }
     
-    // Get result
-    result = game.result || 'draw';
+    // Determine the result from the user's perspective
+    if (username) {
+      // Determine which color the user played
+      let userColor: 'white' | 'black' | null = null;
+      
+      if (game.white && game.white.username && game.white.username.toLowerCase() === username.toLowerCase()) {
+        userColor = 'white';
+      } else if (game.black && game.black.username && game.black.username.toLowerCase() === username.toLowerCase()) {
+        userColor = 'black';
+      }
+      
+      if (userColor) {
+        // Get the raw PGN result
+        let pgnResult = '1/2-1/2'; // Default to draw
+        if (game.headers && game.headers.Result) {
+          pgnResult = game.headers.Result;
+        }
+        
+        // Convert PGN result to user's perspective
+        if (pgnResult === '1/2-1/2') {
+          result = 'draw';
+        } else if (userColor === 'white') {
+          // User played White
+          result = pgnResult === '1-0' ? 'win' : 'loss';
+        } else {
+          // User played Black
+          result = pgnResult === '0-1' ? 'win' : 'loss';
+        }
+      } else {
+        // Fallback if we can't determine user color
+        result = game.result || 'draw';
+      }
+    } else {
+      // Fallback if no username provided
+      result = game.result || 'draw';
+    }
     
     // Skip if we don't have timestamp data
     if (timestamp === null) return;

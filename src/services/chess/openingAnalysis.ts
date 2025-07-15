@@ -122,6 +122,26 @@ const processGames = (games: any[], sequences: Record<string, any>, color: 'whit
     
     if (!moves) return;
     
+    // Determine the result from the user's perspective based on their color
+    let userResult: 'win' | 'draw' | 'loss' = 'draw';
+    
+    // Get the raw PGN result
+    let pgnResult = '1/2-1/2'; // Default to draw
+    if (game.headers && game.headers.Result) {
+      pgnResult = game.headers.Result;
+    }
+    
+    // Convert PGN result to user's perspective
+    if (pgnResult === '1/2-1/2') {
+      userResult = 'draw';
+    } else if (color === 'white') {
+      // User played White
+      userResult = pgnResult === '1-0' ? 'win' : 'loss';
+    } else {
+      // User played Black
+      userResult = pgnResult === '0-1' ? 'win' : 'loss';
+    }
+    
     // Clean the moves string before splitting into move pairs
     const cleanedMoves = cleanMoveSequence(moves);
     const movePairs = cleanedMoves.split(/\d+\./).filter(Boolean);
@@ -143,15 +163,15 @@ const processGames = (games: any[], sequences: Record<string, any>, color: 'whit
             name: openingName,
             sequence: sequenceMovePairs,
             games: 1,
-            wins: game.result === 'win' ? 1 : 0,
-            draws: game.result === 'draw' ? 1 : 0,
-            losses: game.result === 'loss' ? 1 : 0,
+            wins: userResult === 'win' ? 1 : 0,
+            draws: userResult === 'draw' ? 1 : 0,
+            losses: userResult === 'loss' ? 1 : 0,
           };
         } else {
           sequences[sequenceKey][sequenceMovePairs].games++;
-          if (game.result === 'win') sequences[sequenceKey][sequenceMovePairs].wins++;
-          else if (game.result === 'draw') sequences[sequenceKey][sequenceMovePairs].draws++;
-          else if (game.result === 'loss') sequences[sequenceKey][sequenceMovePairs].losses++;
+          if (userResult === 'win') sequences[sequenceKey][sequenceMovePairs].wins++;
+          else if (userResult === 'draw') sequences[sequenceKey][sequenceMovePairs].draws++;
+          else if (userResult === 'loss') sequences[sequenceKey][sequenceMovePairs].losses++;
         }
       }
     });
