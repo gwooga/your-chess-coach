@@ -89,18 +89,18 @@ const ChessAnalyzer: React.FC = () => {
       }
       
       setLoadingProgress(prev => {
-        // Smooth animation towards target
+        // Smooth animation towards target with faster response
         const diff = targetProgress - prev;
-        const increment = Math.max(0.1, diff * 0.1);
+        const increment = Math.max(0.5, diff * 0.2); // Increased from 0.1 and 0.1
         return Math.min(prev + increment, 100);
       });
-    }, 100); // Update every 100ms for smooth animation
+    }, 50); // Update every 50ms for smoother animation (was 100ms)
 
     return () => {
       clearInterval(textInterval);
       clearInterval(progressInterval);
     };
-  }, [isLoading, loadingStartTime, loadingComplete, loadingTexts]);
+  }, [isLoading, loadingStartTime, loadingComplete]);
 
   // Helper to calculate average rating
   const getAverageRating = (ratings: any) => {
