@@ -71,30 +71,43 @@ const ChessAnalyzer: React.FC = () => {
     }, 5000);
 
     // Progress animation
+    // Track acceleration when actual loading completes early
+    let accelerateStartTime: number | null = null;
+    let progressAtAccelerateStart = 0;
+
     const progressInterval = setInterval(() => {
       const now = Date.now();
       const elapsed = now - startTime;
-      
-      let targetProgress = 0;
-      
-      if (elapsed <= 90000) { // First 90 seconds: 0% to 85%
+
+      let targetProgress;
+
+      // Determine the base target progress based on elapsed time
+      if (elapsed <= 90000) {
+        // 0-90 seconds: ease-out from 0 to 85
         const t = elapsed / 90000; // 0 to 1
-        // Ease-out curve: start fast, slow down
-        const eased = 1 - Math.pow(1 - t, 2);
+        const eased = 1 - Math.pow(1 - t, 2); // ease-out
         targetProgress = eased * 85;
-      } else { // After 90 seconds: 85% to 100% in 60 seconds (linear)
-        const overTime = elapsed - 90000;
-        const linearProgress = Math.min(overTime / 60000, 1); // 0 to 1 over 60 seconds
-        targetProgress = 85 + (linearProgress * 15);
+      } else {
+        // 90-150 seconds: linear from 85 to 100
+        const overTime = Math.min(elapsed - 90000, 60000); // cap at 60s
+        targetProgress = 85 + (overTime / 60000) * 15;
       }
-      
-      setLoadingProgress(prev => {
-        // Smooth animation towards target with faster response
-        const diff = targetProgress - prev;
-        const increment = Math.max(0.5, diff * 0.2); // Increased from 0.1 and 0.1
-        return Math.min(prev + increment, 100);
-      });
-    }, 50); // Update every 50ms for smoother animation (was 100ms)
+
+      // If the actual loading finished earlier, accelerate to 100% within 1 second
+      if (loadingComplete) {
+        if (accelerateStartTime === null) {
+          accelerateStartTime = now;
+          progressAtAccelerateStart = loadingProgress;
+        }
+        const accElapsed = now - accelerateStartTime;
+        const accT = Math.min(accElapsed / 1000, 1); // 1 second to finish
+        targetProgress = progressAtAccelerateStart + (100 - progressAtAccelerateStart) * accT;
+      }
+
+      targetProgress = Math.min(targetProgress, 100);
+
+      setLoadingProgress(targetProgress);
+    }, 100); // deterministic update every 100ms
 
     return () => {
       clearInterval(textInterval);
