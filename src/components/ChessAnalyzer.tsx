@@ -16,8 +16,6 @@ const ChessAnalyzer: React.FC = () => {
   const [userAnalysis, setUserAnalysis] = useState<UserAnalysis | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>('last90'); // Default to 90 days
   const [activeTab, setActiveTab] = useState<string>("coach");
-  const [downloadProgress, setDownloadProgress] = useState<number>(0);
-  const [displayedProgress, setDisplayedProgress] = useState<number>(0);
   const [allUploadedGames, setAllUploadedGames] = useState<any[]>([]);
   const isTimeRangeDisabled = true; // Set to false to re-enable in the future
   const [pgn, setPgn] = useState<string>("");
@@ -28,162 +26,81 @@ const ChessAnalyzer: React.FC = () => {
     tableNotes: any[];
   } | null>(null);
   
-  // New loading states for two-phase loading
-  const [loadingPhase, setLoadingPhase] = useState<'download' | 'analysis' | 'complete'>('download');
-  const [loadingText, setLoadingText] = useState<string>('Downloading games...');
-  const [analysisStartTime, setAnalysisStartTime] = useState<number | null>(null);
+  // Unified loading states
+  const [loadingProgress, setLoadingProgress] = useState<number>(0);
+  const [loadingText, setLoadingText] = useState<string>('');
+  const [loadingStartTime, setLoadingStartTime] = useState<number | null>(null);
+  const [loadingComplete, setLoadingComplete] = useState<boolean>(false);
 
-  // Track loader timing for intermediate progress
-  const loaderRef = React.useRef({
-    lastRealProgress: 0,
-    lastRealTime: 0,
-    intermediateTimeout: null as null | ReturnType<typeof setTimeout>,
-    interval: null as null | ReturnType<typeof setInterval>,
-    textInterval: null as null | ReturnType<typeof setInterval>,
-    realProgress: 0,
-    platform: 'chess.com' as Platform,
-  });
-
-  // Analysis loading text phases
-  const analysisTexts = [
+  // Loading text phases (change every 5 seconds)
+  const loadingTexts = [
+    'Downloading games....',
+    'This should take about 90 seconds',
     'Analyzing your games...',
-    'This should take about ~40 more seconds',
     'Crunching move-by-move data',
     'Running deep engine evaluations',
     'We\'re using our best AI engine for best results',
     'Comparing results to similar ratings',
+    'Running quality checks',
     'Optimizing results for clarity',
     'Polishing the final report',
     'Generating visualizations',
     'Double-checking for accuracy',
-    'Wrapping up… almost ready to reveal insights'
+    'Setting up interactive charts',
+    'Wrapping up… Almost ready to reveal insights'
   ];
 
-  // Accurate milestone arrays based on backend reporting
-  const chessComMilestones = [0, 12, 25, 37, 50, 63, 75, 84, 100];
-  const lichessMilestones = [0, 12, 25, 37, 50, 63, 84, 100];
-
-  // Enhanced setProgress to handle continuous fake-progress
-  const setProgressWithContinuousFake = React.useCallback((progress: number, platform: Platform) => {
-    // console.log('[REAL PROGRESS]', progress, platform);
-    loaderRef.current.realProgress = progress;
-    loaderRef.current.platform = platform;
-    setDownloadProgress(progress);
-  }, []);
-
-  // Analysis phase progress simulation
-  const startAnalysisPhase = React.useCallback(() => {
-    setLoadingPhase('analysis');
-    setAnalysisStartTime(Date.now());
-    // Reset progress to 0 for clean transition
-    setDownloadProgress(0);
-    setDisplayedProgress(0);
-    setLoadingText(analysisTexts[0]);
-    
-    // Start text rotation
-    let textIndex = 0;
-    const textInterval = setInterval(() => {
-      textIndex = (textIndex + 1) % analysisTexts.length;
-      setLoadingText(analysisTexts[textIndex]);
-    }, 4000); // Change text every 4 seconds
-    
-    // Store interval for cleanup
-    loaderRef.current.textInterval = textInterval;
-  }, [analysisTexts]);
-
-  // Continuous fake-progress animation effect
+  // Unified loading progress effect
   React.useEffect(() => {
-    if (!isLoading) {
-      setDisplayedProgress(0);
-      if (loaderRef.current.interval) clearInterval(loaderRef.current.interval);
-      if (loaderRef.current.textInterval) clearInterval(loaderRef.current.textInterval);
+    if (!isLoading || loadingComplete) {
       return;
     }
 
-    if (loaderRef.current.interval) clearInterval(loaderRef.current.interval);
+    const startTime = loadingStartTime || Date.now();
+    
+    // Text rotation every 5 seconds
+    let textIndex = 0;
+    setLoadingText(loadingTexts[0]);
+    
+    const textInterval = setInterval(() => {
+      textIndex++;
+      if (textIndex < loadingTexts.length) {
+        setLoadingText(loadingTexts[textIndex]);
+      }
+      // Stop changing text when we reach the end
+    }, 5000);
 
-    loaderRef.current.interval = setInterval(() => {
-      setDisplayedProgress((prev) => {
-        if (loadingPhase === 'download') {
-          const realProgress = loaderRef.current.realProgress;
-
-          // If download is done, go to 100 and stop
-          if (realProgress >= 100) {
-            if (loaderRef.current.interval) clearInterval(loaderRef.current.interval);
-            return 100;
-          }
-
-          const milestones =
-            loaderRef.current.platform === 'lichess'
-              ? lichessMilestones
-              : chessComMilestones;
-
-          // Find the index of the milestone we're currently at or have passed
-          let currentMilestoneIndex = -1;
-          for (let i = milestones.length - 1; i >= 0; i--) {
-            if (realProgress >= milestones[i]) {
-              currentMilestoneIndex = i;
-              break;
-            }
-          }
-          
-          const nextMilestone = milestones[currentMilestoneIndex + 1] || 100;
-
-          // If displayed progress is already at the next milestone, just wait
-          if (prev >= nextMilestone) {
-            return prev;
-          }
-
-          // Move faster to catch up to real progress, then move slowly
-          const gap = Math.max(0, realProgress - prev);
-          const increment = 0.25 + gap / 10; // Base speed + catch-up speed
-
-          const newProgress = prev + increment;
-
-          // Animate up to the next milestone, but not past it
-          return Math.min(newProgress, nextMilestone);
-        } else if (loadingPhase === 'analysis') {
-          // Analysis phase: simulate 1-minute loading (0-90%) then slower to 100%
-          const now = Date.now();
-          const elapsed = now - (analysisStartTime || now);
-          const oneMinute = 60000; // 60 seconds
-          const thirtySeconds = 30000; // 30 seconds
-          
-          let targetProgress = 0;
-          
-          if (elapsed <= oneMinute) {
-            // 0-90% in 1 minute with easing (start fast, slow down)
-            const t = elapsed / oneMinute;
-            // Ease-out curve: start fast, slow down
-            const eased = 1 - Math.pow(1 - t, 3);
-            targetProgress = eased * 90;
-          } else {
-            // 90-100% in next 30 seconds at constant speed
-            const overTime = elapsed - oneMinute;
-            const extraProgress = Math.min(overTime / thirtySeconds, 1) * 10;
-            targetProgress = 90 + extraProgress;
-          }
-          
-          // Smooth animation towards target
-          const diff = targetProgress - prev;
-          const increment = Math.max(0.1, diff * 0.1);
-          
-          return Math.min(prev + increment, 100);
-        }
-        
-        return prev;
+    // Progress animation
+    const progressInterval = setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - startTime;
+      
+      let targetProgress = 0;
+      
+      if (elapsed <= 90000) { // First 90 seconds: 0% to 85%
+        const t = elapsed / 90000; // 0 to 1
+        // Ease-out curve: start fast, slow down
+        const eased = 1 - Math.pow(1 - t, 2);
+        targetProgress = eased * 85;
+      } else { // After 90 seconds: 85% to 100% in 60 seconds (linear)
+        const overTime = elapsed - 90000;
+        const linearProgress = Math.min(overTime / 60000, 1); // 0 to 1 over 60 seconds
+        targetProgress = 85 + (linearProgress * 15);
+      }
+      
+      setLoadingProgress(prev => {
+        // Smooth animation towards target
+        const diff = targetProgress - prev;
+        const increment = Math.max(0.1, diff * 0.1);
+        return Math.min(prev + increment, 100);
       });
-    }, 75); // Update interval for smoother animation
+    }, 100); // Update every 100ms for smooth animation
 
     return () => {
-      if (loaderRef.current.interval) {
-        clearInterval(loaderRef.current.interval);
-      }
-      if (loaderRef.current.textInterval) {
-        clearInterval(loaderRef.current.textInterval);
-      }
+      clearInterval(textInterval);
+      clearInterval(progressInterval);
     };
-  }, [isLoading, loadingPhase, analysisStartTime]);
+  }, [isLoading, loadingStartTime, loadingComplete, loadingTexts]);
 
   // Helper to calculate average rating
   const getAverageRating = (ratings: any) => {
@@ -263,19 +180,19 @@ const ChessAnalyzer: React.FC = () => {
 
   const handleUserSubmit = async (info: UserInfo, selectedTimeRange: TimeRange) => {
     setIsLoading(true);
+    setLoadingComplete(false);
+    setLoadingProgress(0);
+    setLoadingStartTime(Date.now());
     setUserInfo(info);
     setTimeRange(selectedTimeRange);
-    setDownloadProgress(0);
-    setLoadingPhase('download');
-    setLoadingText('Downloading games...');
     
     try {
-      // Phase 1: Download games
+      // Download games
       const games = await downloadPGN(
         info.username, 
         info.platform, 
         selectedTimeRange,
-        (p) => setProgressWithContinuousFake(p, info.platform)
+        () => {} // No progress callback needed for unified loader
       );
       
       if (games.length === 0) {
@@ -287,9 +204,6 @@ const ChessAnalyzer: React.FC = () => {
         setIsLoading(false);
         return;
       }
-      
-      // Phase 2: Start analysis phase
-      startAnalysisPhase();
       
       // Run analysis first, then AI processing
       const analysis = await analyzeChessData({ 
@@ -308,7 +222,7 @@ const ChessAnalyzer: React.FC = () => {
       setPgn(games.map(g => g.pgn).join('\n\n'));
       
       // Complete loading
-      setLoadingPhase('complete');
+      setLoadingComplete(true);
       setIsLoading(false);
       
     } catch (error) {
@@ -324,15 +238,12 @@ const ChessAnalyzer: React.FC = () => {
   
   const handlePgnUpload = async (pgnContent: string) => {
     setIsLoading(true);
-    setDownloadProgress(0);
-    setLoadingPhase('download');
-    setLoadingText('Processing PGN file...');
+    setLoadingComplete(false);
+    setLoadingProgress(0);
+    setLoadingStartTime(Date.now());
     
     try {
       console.log("Parsing PGN content, length:", pgnContent.length);
-      
-      // Simulate download progress for PGN parsing
-      setDownloadProgress(25);
       
       // Parse the uploaded PGN content
       const parsedGames = parsePgnContent(pgnContent);
@@ -348,8 +259,6 @@ const ChessAnalyzer: React.FC = () => {
         setIsLoading(false);
         return;
       }
-      
-      setDownloadProgress(75);
       
       // Store all the parsed games to filter later by time range
       setAllUploadedGames(parsedGames);
@@ -367,10 +276,6 @@ const ChessAnalyzer: React.FC = () => {
       };
       
       setUserInfo(uploadUserInfo);
-      setDownloadProgress(100);
-      
-      // Start analysis phase
-      startAnalysisPhase();
       
       // Run analysis first, then AI processing
       const analysis = await analyzeChessData({ 
@@ -389,7 +294,7 @@ const ChessAnalyzer: React.FC = () => {
       setPgn(pgnContent);
       
       // Complete loading
-      setLoadingPhase('complete');
+      setLoadingComplete(true);
       setIsLoading(false);
       
     } catch (error) {
@@ -451,20 +356,15 @@ const ChessAnalyzer: React.FC = () => {
     
     setTimeRange(value);
     setIsLoading(true);
-    setDownloadProgress(0);
-    setLoadingPhase('download');
-    setLoadingText('Updating time range...');
+    setLoadingComplete(false);
+    setLoadingProgress(0);
+    setLoadingStartTime(Date.now());
     
     try {
       // Handle different paths for uploaded PGN vs APIs
       if (userInfo.platform === "uploaded" && allUploadedGames.length > 0) {
         // For uploaded games, we filter the already parsed games by the new time range
         const filteredGames = filterGamesByTimeRange(allUploadedGames, value);
-        
-        setDownloadProgress(100);
-        
-        // Start analysis phase
-        startAnalysisPhase();
         
         // Analyze the filtered games first, then fetch coach data
         const analysis = await analyzeChessData({
@@ -480,7 +380,7 @@ const ChessAnalyzer: React.FC = () => {
         setCombinedCoachData(coachData);
         
         // Complete loading
-        setLoadingPhase('complete');
+        setLoadingComplete(true);
         setIsLoading(false);
         
       } else {
@@ -489,7 +389,7 @@ const ChessAnalyzer: React.FC = () => {
           userInfo.username, 
           userInfo.platform, 
           value,
-          (p) => setProgressWithContinuousFake(p, userInfo!.platform)
+          () => {} // No progress callback needed for unified loader
         );
         
         if (games.length === 0) {
@@ -501,9 +401,6 @@ const ChessAnalyzer: React.FC = () => {
           setIsLoading(false);
           return;
         }
-        
-        // Start analysis phase
-        startAnalysisPhase();
         
         // Analyze the data first, then fetch coach data
         const analysis = await analyzeChessData({ 
@@ -519,7 +416,7 @@ const ChessAnalyzer: React.FC = () => {
         setCombinedCoachData(coachData);
         
         // Complete loading
-        setLoadingPhase('complete');
+        setLoadingComplete(true);
         setIsLoading(false);
       }
     } catch (error) {
@@ -542,11 +439,9 @@ const ChessAnalyzer: React.FC = () => {
       {isLoading && (
         <div className="mb-8">
           <p className="mb-2 text-sm text-muted-foreground">
-            {loadingPhase === 'download' 
-              ? `${loadingText} ${Math.floor(displayedProgress)}%` 
-              : loadingText}
+            {loadingText} {Math.floor(loadingProgress)}%
           </p>
-          <Progress value={displayedProgress} className="h-2" />
+          <Progress value={loadingProgress} className="h-2" />
         </div>
       )}
       
