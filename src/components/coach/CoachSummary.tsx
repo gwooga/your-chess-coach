@@ -15,6 +15,32 @@ const CoachSummary: React.FC<CoachSummaryProps> = ({
   areasToImprove, 
   studyRecommendations 
 }) => {
+  // Function to format recommendation string
+  const formatRecommendation = (rec: string) => {
+    const focusMatch = rec.match(/Focus:\s*([^\-]+?)(?=\s*-|$)/i);
+    const drillMatch = rec.match(/Drill:\s*([^\-]+?)(?=\s*-|$)/i);
+    const rationaleMatch = rec.match(/Rationale:\s*(.+)/i);
+
+    const focus = focusMatch ? focusMatch[1].trim() : '';
+    const drill = drillMatch ? drillMatch[1].trim() : '';
+    const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
+
+    if (!focus && !drill && !rationale) return rec;
+
+    // Build a natural sentence
+    let sentence = '';
+    if (drill) {
+      sentence += drill;
+      if (focus) sentence += ` in the ${focus}`;
+      sentence = sentence.replace(/\.$/, ''); // remove period if exists
+      sentence += '.';
+    }
+    if (rationale) {
+      sentence += ` ${rationale}`;
+    }
+    return sentence.trim();
+  };
+
   return (
     <Card className="border-l-4 border-l-chess-purple">
       <CardContent className="pt-6">
@@ -66,7 +92,7 @@ const CoachSummary: React.FC<CoachSummaryProps> = ({
               </div>
               <ul className="list-disc pl-10 space-y-2">
                 {studyRecommendations && studyRecommendations.map((rec, i) => (
-                  <li key={i} className="text-gray-700">{rec}</li>
+                  <li key={i} className="text-gray-700">{formatRecommendation(rec)}</li>
                 ))}
               </ul>
             </div>

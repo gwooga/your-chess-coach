@@ -182,11 +182,11 @@ const OpeningSummaryTable: React.FC<OpeningSummaryTableProps> = ({
             {loading && <p>Loading coach's notes...</p>}
             {error && <p className="text-red-500">{error}</p>}
             {!loading && !error && Array.isArray(coachNotes) && coachNotes.length > 0 && (
-              <div>
+              <ul className="list-disc pl-6 space-y-1">
                 {coachNotes.map((sentence: string, idx: number) => (
-                  <p key={idx}>{sentence}</p>
+                  <li key={idx}>{sentence}</li>
                 ))}
-              </div>
+              </ul>
             )}
             {!loading && !error && (!Array.isArray(coachNotes) || coachNotes.length === 0) && variant && variant !== 'all' && (
               <div className="text-center py-4">
