@@ -45,13 +45,13 @@
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 24px;
+  padding: 16px 32px;
   background: linear-gradient(135deg, #ff8c42 0%, #ff6b1a 100%);
   color: white;
   text-decoration: none;
   border-radius: 50px;
   font-weight: 600;
-  font-size: 16px;
+  font-size: 18px;
   box-shadow: 0 8px 32px rgba(255, 107, 26, 0.3);
   transition: all 0.3s ease;
   border: none;

@@ -117,14 +117,6 @@ const OpeningsTable: React.FC<OpeningsTableProps> = ({ data, title, totalGames }
               <TableHead>Sequence</TableHead>
               <TableHead className="cursor-pointer" onClick={() => handleSort('games')}>
                 Games {getSortIcon('games')}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="h-4 w-4 text-muted-foreground cursor-help ml-1" />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
-                    <p>Number of your games with this opening based on color total.</p>
-                  </TooltipContent>
-                </Tooltip>
               </TableHead>
               <TableHead className="cursor-pointer" style={{color: 'rgb(22 163 74)'}} onClick={() => handleSort('winsPercentage')}>
                 Wins {getSortIcon('winsPercentage')}

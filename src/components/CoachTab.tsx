@@ -99,7 +99,7 @@ const CoachTab: React.FC<CoachTabProps> = ({
         <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="summary">Coach's Summary</TabsTrigger>
-            <TabsTrigger value="performance">Performance</TabsTrigger>
+            <TabsTrigger value="performance" disabled>Performance Analysis (Upgrade to Pro)</TabsTrigger>
           </TabsList>
           {/* Coach's Summary Content */}
           <TabsContent value="summary" className="mt-6">
