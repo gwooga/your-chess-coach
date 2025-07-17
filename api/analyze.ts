@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import OpenAI from 'openai';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
@@ -34,8 +33,11 @@ export default async function handler(
   request: VercelRequest,
   response: VercelResponse,
 ) {
+  console.log('API Key check:', !!process.env.OPENAI_API_KEY);
+  
   if (!process.env.OPENAI_API_KEY) {
-    response.status(500).json({ error: 'OpenAI API key not set.' });
+    console.error('OpenAI API key not found in environment variables');
+    response.status(500).json({ error: 'OpenAI API key not configured.' });
     return;
   }
 
@@ -44,21 +46,22 @@ export default async function handler(
     return;
   }
 
-  const { username, platform, tables, totalGames, highestRating } = request.body || {};
+  try {
+    const { username, platform, tables, totalGames, highestRating } = request.body || {};
 
-  if (!username || !tables || !Array.isArray(tables)) {
-    response.status(400).json({ error: 'Missing required fields: username, tables.' });
-    return;
-  }
+    if (!username || !tables || !Array.isArray(tables)) {
+      response.status(400).json({ error: 'Missing required fields: username, tables.' });
+      return;
+    }
 
-  // Format all tables for the prompt
-  const formattedTables = tables.map((table: any, index: number) => {
-    const tableMarkdown = formatTableMarkdown(table.data);
-    return `**Table ${index + 1} (${table.tableKey}):**\n${tableMarkdown}`;
-  }).join('\n\n');
+    // Format all tables for the prompt
+    const formattedTables = tables.map((table: any, index: number) => {
+      const tableMarkdown = formatTableMarkdown(table.data);
+      return `**Table ${index + 1} (${table.tableKey}):**\n${tableMarkdown}`;
+    }).join('\n\n');
 
-  // Create the master prompt combining both coach notes and coach summary
-  const prompt = `You are a world-class chess coach. You will analyze a player's opening performance data (sometime playing as black and sometimes playing as white) and provide both detailed table-specific notes AND an overall coaching summary.
+    // Create the master prompt combining both coach notes and coach summary
+    const prompt = `You are a world-class chess coach. You will analyze a player's opening performance data (sometime playing as black and sometimes playing as white) and provide both detailed table-specific notes AND an overall coaching summary.
 
 **Player Information:**
 - Username: ${username}
@@ -132,7 +135,7 @@ ${formattedTables}
 
 Adapt language complexity to the player's rating range. Always use second person language. Return only valid JSON.`;
 
-  try {
+    console.log('Making OpenAI API call...');
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
@@ -144,20 +147,24 @@ Adapt language complexity to the player's rating range. Always use second person
     });
 
     const aiResponse = completion.choices[0]?.message?.content || 'No response from AI.';
+    console.log('AI response received, length:', aiResponse.length);
     
     let parsedResponse: any = null;
     try {
       parsedResponse = JSON.parse(aiResponse);
     } catch (e) {
+      console.error('JSON parse error:', e);
       // Try to extract JSON from a possibly verbose response
       const match = aiResponse.match(/\{[\s\S]*\}/);
       if (match) {
         try {
           parsedResponse = JSON.parse(match[0]);
         } catch (e2) {
+          console.error('JSON extraction failed:', e2);
           return response.status(500).json({ error: 'AI response was not valid JSON.', raw: aiResponse });
         }
       } else {
+        console.error('No JSON found in response');
         return response.status(500).json({ error: 'AI response was not valid JSON.', raw: aiResponse });
       }
     }
@@ -174,12 +181,17 @@ Adapt language complexity to the player's rating range. Always use second person
       }));
     }
 
+    console.log('Sending successful response');
     response.status(200).json({
       summary: parsedResponse.coachSummary,
       tableNotes: parsedResponse.tableNotes
     });
   } catch (error: any) {
     console.error('OpenAI API error:', error?.response?.data || error.message || error);
-    response.status(500).json({ error: 'Failed to generate analysis.', details: error?.response?.data || error.message || error });
+    response.status(500).json({ 
+      error: 'Failed to generate analysis.', 
+      details: error?.response?.data || error.message || error,
+      stack: error?.stack
+    });
   }
 } 
