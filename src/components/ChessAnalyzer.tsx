@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import UserForm from './UserForm';
 import CoachTab from './CoachTab';
 import OpeningsTab from './OpeningsTab';
+import AIProviderSwitcher from './AIProviderSwitcher';
 import { UserInfo, TimeRange, ChessVariant, UserAnalysis, Platform } from '@/utils/types';
 import { analyzeChessData } from '@/services/chessAnalysisService';
 import { downloadPGN, parsePgnContent, filterGamesByTimeRange } from '@/services/pgnDownloadService';
@@ -459,11 +460,14 @@ const ChessAnalyzer: React.FC = () => {
       )}
       
       {!userAnalysis ? (
-        <UserForm 
-          onSubmit={handleUserSubmit} 
-          onPgnUpload={handlePgnUpload}
-          isLoading={isLoading} 
-        />
+        <>
+          <AIProviderSwitcher />
+          <UserForm 
+            onSubmit={handleUserSubmit} 
+            onPgnUpload={handlePgnUpload}
+            isLoading={isLoading} 
+          />
+        </>
       ) : (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

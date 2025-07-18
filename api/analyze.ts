@@ -1,9 +1,5 @@
-import OpenAI from 'openai';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import { createCompletion } from '../src/services/aiService';
 
 function formatTableMarkdown(table: any[]): string {
   if (!table.length) return '';
@@ -33,11 +29,11 @@ export default async function handler(
   request: VercelRequest,
   response: VercelResponse,
 ) {
-  console.log('API Key check:', !!process.env.OPENAI_API_KEY);
+  console.log('API Key check:', !!process.env.DEEPSEEK_API_KEY);
   
-  if (!process.env.OPENAI_API_KEY) {
-    console.error('OpenAI API key not found in environment variables');
-    response.status(500).json({ error: 'OpenAI API key not configured.' });
+  if (!process.env.DEEPSEEK_API_KEY) {
+    console.error('DeepSeek API key not found in environment variables');
+    response.status(500).json({ error: 'DeepSeek API key not configured.' });
     return;
   }
 
@@ -135,18 +131,15 @@ ${formattedTables}
 
 Adapt language complexity to the player's rating range. Always use second person language. Return only valid JSON.`;
 
-    console.log('Making OpenAI API call...');
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: 'You are a world-class chess coach and data analyst.' },
-        { role: 'user', content: prompt },
-      ],
-      max_tokens: 3000,
-      temperature: 0.7,
-    });
+    console.log('Making AI API call...');
+    const completion = await createCompletion(
+      'You are a world-class chess coach and data analyst.',
+      prompt,
+      3000,
+      0.7
+    );
 
-    const aiResponse = completion.choices[0]?.message?.content || 'No response from AI.';
+    const aiResponse = completion.content;
     console.log('AI response received, length:', aiResponse.length);
     
     let parsedResponse: any = null;
@@ -187,7 +180,7 @@ Adapt language complexity to the player's rating range. Always use second person
       tableNotes: parsedResponse.tableNotes
     });
   } catch (error: any) {
-    console.error('OpenAI API error:', error?.response?.data || error.message || error);
+    console.error('AI API error:', error?.response?.data || error.message || error);
     response.status(500).json({ 
       error: 'Failed to generate analysis.', 
       details: error?.response?.data || error.message || error,
