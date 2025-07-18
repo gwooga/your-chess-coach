@@ -26,7 +26,7 @@ export default async function handler(
     console.log('Making test DeepSeek API call...');
     
     const completion = await generateText({
-      model: deepseek('deepseek-chat'),
+      model: deepseek('deepseek-chat-67b'),
       messages: [
         { role: 'user', content: 'Say "Hello from DeepSeek!" and nothing else.' }
       ],
@@ -39,7 +39,7 @@ export default async function handler(
     response.status(200).json({
       success: true,
       response: completion.text,
-      model: 'deepseek-chat'
+      model: 'deepseek-chat-67b'
     });
   } catch (error: any) {
     console.error('DeepSeek API test failed:', error);
