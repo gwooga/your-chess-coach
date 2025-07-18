@@ -7,6 +7,7 @@ import ChessAdviser from './ChessAdviser';
 import CoachSummary from './coach/CoachSummary';
 import CoachPerformance from './coach/CoachPerformance';
 import { getOpeningNameBySequence } from '@/services/chess/openingsDatabase';
+import UpgradeButton from './UpgradeButton';
 
 interface CoachTabProps {
   analysis: UserAnalysis;
@@ -39,6 +40,7 @@ const CoachTab: React.FC<CoachTabProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [openingsList, setOpeningsList] = useState<string[]>([]);
   const [relevantOpenings, setRelevantOpenings] = useState<string[]>([]);
+  const [showPerformanceUpgrade, setShowPerformanceUpgrade] = useState(false);
   
   const variantData = analysis.openings[variant];
   
@@ -99,7 +101,27 @@ const CoachTab: React.FC<CoachTabProps> = ({
         <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="summary">Coach's Summary</TabsTrigger>
-            <TabsTrigger value="performance" disabled>Performance Analysis (Upgrade to Pro)</TabsTrigger>
+            <div 
+              className="relative"
+              onMouseEnter={() => setShowPerformanceUpgrade(true)}
+              onMouseLeave={() => setShowPerformanceUpgrade(false)}
+            >
+              <TabsTrigger 
+                value="performance" 
+                className="cursor-pointer opacity-100 hover:bg-accent hover:text-accent-foreground"
+                onClick={(e) => {
+                  e.preventDefault();
+                  // Show upgrade button instead of switching tabs
+                }}
+              >
+                Performance Analysis (Upgrade to Pro)
+              </TabsTrigger>
+              {showPerformanceUpgrade && (
+                <div className="absolute top-full left-0 mt-2 z-50">
+                  <UpgradeButton useImage={true} />
+                </div>
+              )}
+            </div>
           </TabsList>
           {/* Coach's Summary Content */}
           <TabsContent value="summary" className="mt-6">
