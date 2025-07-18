@@ -87,14 +87,29 @@ const callDeepSeek = async (request: AICompletionRequest): Promise<AICompletionR
   console.log('Making DeepSeek API call with model:', model);
   
   try {
-    const completion = await generateText({
-      model: deepseek(model),
-      messages: convertToDeepSeekMessages(request.messages),
-      maxTokens: request.maxTokens || 3000,
-      temperature: request.temperature || 0.7,
+    // Direct HTTP request to DeepSeek API
+    const apiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: convertToDeepSeekMessages(request.messages),
+        max_tokens: request.maxTokens || 3000,
+        temperature: request.temperature || 0.7,
+        stream: false
+      })
     });
 
-    const content = completion.text || 'No response from AI.';
+    const data = await apiResponse.json();
+    
+    if (!apiResponse.ok) {
+      throw new Error(`DeepSeek API Error: ${apiResponse.status} - ${JSON.stringify(data)}`);
+    }
+
+    const content = data.choices?.[0]?.message?.content || 'No response from AI.';
     
     return {
       content,
