@@ -21,7 +21,7 @@ export const defaultAIConfig: AIConfig = {
   },
   deepseek: {
     apiKey: process.env.DEEPSEEK_API_KEY || '',
-    model: 'deepseek-chat-67b',
+    model: 'deepseek-chat-33b',
   },
 };
 
