@@ -78,21 +78,33 @@ const callOpenAI = async (request: AICompletionRequest): Promise<AICompletionRes
 // Make DeepSeek API call
 const callDeepSeek = async (request: AICompletionRequest): Promise<AICompletionResponse> => {
   const model = getCurrentModel();
+  const apiKey = process.env.DEEPSEEK_API_KEY;
   
-  const completion = await generateText({
-    model: deepseek(model),
-    messages: convertToDeepSeekMessages(request.messages),
-    maxTokens: request.maxTokens || 3000,
-    temperature: request.temperature || 0.7,
-  });
+  if (!apiKey) {
+    throw new Error('DeepSeek API key not found in environment variables');
+  }
+  
+  console.log('Making DeepSeek API call with model:', model);
+  
+  try {
+    const completion = await generateText({
+      model: deepseek(model),
+      messages: convertToDeepSeekMessages(request.messages),
+      maxTokens: request.maxTokens || 3000,
+      temperature: request.temperature || 0.7,
+    });
 
-  const content = completion.text || 'No response from AI.';
-  
-  return {
-    content,
-    provider: 'deepseek',
-    model,
-  };
+    const content = completion.text || 'No response from AI.';
+    
+    return {
+      content,
+      provider: 'deepseek',
+      model,
+    };
+  } catch (error) {
+    console.error('DeepSeek API call failed:', error);
+    throw error;
+  }
 };
 
 // Main function to make AI API calls

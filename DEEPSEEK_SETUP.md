@@ -50,7 +50,29 @@ If you want to switch back to OpenAI:
 ## Current Configuration
 
 - **Default Provider**: DeepSeek
-- **DeepSeek Model**: `deepseek-chat`
+- **DeepSeek Model**: `deepseek-chat-2024-12-01` (latest version)
 - **OpenAI Model**: `gpt-4o` (when switching back)
+
+## Available DeepSeek Models
+
+### Chat Models (Conversational)
+- `deepseek-chat` - Main conversational model
+- `deepseek-chat-33b` - 33B parameter version
+- `deepseek-chat-67b` - 67B parameter version
+- `deepseek-chat-2024-12-01` - Latest chat model (current)
+
+### Coder Models (Code-focused)
+- `deepseek-coder` - Main coding model
+- `deepseek-coder-33b` - 33B parameter coding model
+- `deepseek-coder-67b` - 67B parameter coding model
+- `deepseek-coder-6.7b` - 6.7B parameter coding model
+- `deepseek-coder-2024-12-01` - Latest coder model
+
+## Testing Your Setup
+
+After setting up your API key, you can test the connection by visiting:
+`https://your-domain.vercel.app/api/test-deepseek`
+
+This will verify that your DeepSeek API key is working correctly.
 
 The app will automatically use the appropriate API based on your selection. 
