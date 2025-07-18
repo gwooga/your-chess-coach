@@ -50,16 +50,15 @@ If you want to switch back to OpenAI:
 ## Current Configuration
 
 - **Default Provider**: DeepSeek
-- **DeepSeek Model**: `deepseek-chat-2024-12-01` (latest version)
+- **DeepSeek Model**: `deepseek-chat` (main conversational model)
 - **OpenAI Model**: `gpt-4o` (when switching back)
 
 ## Available DeepSeek Models
 
 ### Chat Models (Conversational)
-- `deepseek-chat` - Main conversational model
+- `deepseek-chat` - Main conversational model (current)
 - `deepseek-chat-33b` - 33B parameter version
 - `deepseek-chat-67b` - 67B parameter version
-- `deepseek-chat-2024-12-01` - Latest chat model (current)
 
 ### Coder Models (Code-focused)
 - `deepseek-coder` - Main coding model

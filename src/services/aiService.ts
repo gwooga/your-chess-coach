@@ -111,17 +111,27 @@ const callDeepSeek = async (request: AICompletionRequest): Promise<AICompletionR
 export const makeAICompletion = async (request: AICompletionRequest): Promise<AICompletionResponse> => {
   const provider = getCurrentProvider();
   
+  console.log(`Making AI completion request with provider: ${provider}`);
+  
   try {
     switch (provider) {
       case 'openai':
+        console.log('Using OpenAI provider');
         return await callOpenAI(request);
       case 'deepseek':
+        console.log('Using DeepSeek provider');
         return await callDeepSeek(request);
       default:
         throw new Error(`Unsupported AI provider: ${provider}`);
     }
   } catch (error) {
     console.error(`Error calling ${provider} API:`, error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      provider,
+      model: getCurrentModel()
+    });
     throw error;
   }
 };
