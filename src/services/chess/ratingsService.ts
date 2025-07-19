@@ -1,7 +1,7 @@
 import { Rating, Platform } from '../../utils/types';
 
 // Add function to extract ratings from raw game data
-export const extractRatings = (games: any[], platform: Platform): Rating => {
+export const extractRatings = (games: any[], platform: Platform, username?: string): Rating => {
   const ratings: Rating = {};
   
   // Group games by variant
@@ -17,45 +17,67 @@ export const extractRatings = (games: any[], platform: Platform): Rating => {
       // For chess.com, filter games by time control
       games.forEach(game => {
         const timeControl = game.time_control || '';
+        let variant = 'blitz'; // default
+        
         if (typeof timeControl === 'string') {
-          if (timeControl.includes('bullet') || (parseInt(timeControl) < 180)) {
-            variantGames.bullet.push(game);
-          } else if (timeControl.includes('blitz') || (parseInt(timeControl) >= 180 && parseInt(timeControl) <= 600)) {
-            variantGames.blitz.push(game);
-          } else if (timeControl.includes('rapid') || (parseInt(timeControl) > 600)) {
-            variantGames.rapid.push(game);
+          // Parse time control to determine variant
+          const timeMatch = timeControl.match(/(\d+)/);
+          const seconds = timeMatch ? parseInt(timeMatch[1]) : 600;
+          
+          if (timeControl.includes('bullet') || seconds < 180) {
+            variant = 'bullet';
+          } else if (timeControl.includes('blitz') || (seconds >= 180 && seconds <= 900)) {
+            variant = 'blitz';
+          } else if (timeControl.includes('rapid') || seconds > 900) {
+            variant = 'rapid';
           }
         }
+        
+        variantGames[variant as keyof typeof variantGames].push(game);
       });
       
-      // Extract most recent rating for each variant
-      if (variantGames.bullet.length > 0) {
-        const game = variantGames.bullet[0];
-        // Try to get the player's rating, checking both white and black
-        if (game.white && game.white.rating && game.white.username) {
-          ratings.bullet = parseInt(game.white.rating);
-        } else if (game.black && game.black.rating && game.black.username) {
-          ratings.bullet = parseInt(game.black.rating);
+      // Extract the user's rating for each variant
+      const extractUserRating = (games: any[], variant: string) => {
+        for (const game of games) {
+          // Check if user played as white
+          if (username && game.white && game.white.username && 
+              game.white.username.toLowerCase() === username.toLowerCase() && 
+              game.white.rating) {
+            return parseInt(game.white.rating);
+          }
+          // Check if user played as black
+          if (username && game.black && game.black.username && 
+              game.black.username.toLowerCase() === username.toLowerCase() && 
+              game.black.rating) {
+            return parseInt(game.black.rating);
+          }
         }
+        return null;
+      };
+
+      // Extract ratings for each variant
+      if (variantGames.bullet.length > 0) {
+        const rating = extractUserRating(variantGames.bullet, 'bullet');
+        if (rating) ratings.bullet = rating;
       }
       
       if (variantGames.blitz.length > 0) {
-        const game = variantGames.blitz[0];
-        if (game.white && game.white.rating && game.white.username) {
-          ratings.blitz = parseInt(game.white.rating);
-        } else if (game.black && game.black.rating && game.black.username) {
-          ratings.blitz = parseInt(game.black.rating);
-        }
+        const rating = extractUserRating(variantGames.blitz, 'blitz');
+        if (rating) ratings.blitz = rating;
       }
       
       if (variantGames.rapid.length > 0) {
-        const game = variantGames.rapid[0];
-        if (game.white && game.white.rating && game.white.username) {
-          ratings.rapid = parseInt(game.white.rating);
-        } else if (game.black && game.black.rating && game.black.username) {
-          ratings.rapid = parseInt(game.black.rating);
-        }
+        const rating = extractUserRating(variantGames.rapid, 'rapid');
+        if (rating) ratings.rapid = rating;
       }
+      
+      // Log game counts by variant
+      console.log('Games by variant:', {
+        bullet: variantGames.bullet.length,
+        blitz: variantGames.blitz.length,
+        rapid: variantGames.rapid.length
+      });
+      console.log('Extracted ratings:', ratings);
     } else if (platform === 'lichess') {
       // For lichess, extract from players object
       games.forEach(game => {

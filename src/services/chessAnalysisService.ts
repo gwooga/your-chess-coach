@@ -41,7 +41,7 @@ export const analyzeChessData = async (data: {
     console.log(`Found ${games.length} games for analysis`);
     
     // Extract ratings from games
-    const ratings = extractRatings(games, info.platform);
+    const ratings = extractRatings(games, info.platform, info.username);
     
     // Analyze openings using our refactored function
     const { openings, totalWhiteGames, totalBlackGames } = analyzeOpenings(games, info.username);

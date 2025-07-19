@@ -119,8 +119,8 @@ export const fetchChessComData = async (userInfo: UserInfo, timeRange: TimeRange
     const allArchives = await fetchChessComGameArchives(username);
     const filteredArchives = filterArchivesByTimeRange(allArchives, timeRange);
     
-    // Fetch games from filtered archives (limit to most recent to avoid rate limiting)
-    const maxArchivesToFetch = 3; // Adjust based on rate limits
+    // Fetch games from filtered archives (limit to last 3 months)
+    const maxArchivesToFetch = Math.min(3, filteredArchives.length); // Last 3 months
     const recentArchives = filteredArchives.slice(-maxArchivesToFetch);
     
     // Fetch games from each archive

@@ -283,27 +283,35 @@ const downloadChessComPGN = async (
     const progressSteps = [0, 12, 25, 37, 50, 63, 75, 84, 100];
     let stepIdx = 0;
     setProgress(progressSteps[stepIdx++]);
-    const total = filteredArchives.length;
+    
+    // Limit to last 3 months as requested
+    const maxArchivesToFetch = Math.min(3, filteredArchives.length);
+    const archivesToFetch = filteredArchives.slice(-maxArchivesToFetch);
+    
+    console.log(`Fetching from ${archivesToFetch.length} Chess.com archives out of ${filteredArchives.length} available (limited to last 3 months)`);
+    
+    const total = archivesToFetch.length;
     for (let i = 0; i < total; i++) {
-      const archiveUrl = filteredArchives[i];
+      const archiveUrl = archivesToFetch[i];
       // Calculate which progress step to use
       const progressIndex = Math.min(
         Math.floor(((i + 1) / total) * (progressSteps.length - 2)) + 1,
         progressSteps.length - 2
       );
       setProgress(progressSteps[progressIndex]);
-      try {
-        const pgnResponse = await fetch(`${archiveUrl}/pgn`);
-        if (pgnResponse.ok) {
-          const pgnText = await pgnResponse.text();
-          const games = parsePgnContent(pgnText);
-          allGames.push(...games);
-        } else {
-          console.error(`Failed to fetch PGN from ${archiveUrl}: ${pgnResponse.status}`);
+              try {
+          const pgnResponse = await fetch(`${archiveUrl}/pgn`);
+          if (pgnResponse.ok) {
+            const pgnText = await pgnResponse.text();
+            const games = parsePgnContent(pgnText);
+            console.log(`Archive ${archiveUrl}: ${games.length} games parsed`);
+            allGames.push(...games);
+          } else {
+            console.error(`Failed to fetch PGN from ${archiveUrl}: ${pgnResponse.status}`);
+          }
+        } catch (error) {
+          console.error(`Error fetching from ${archiveUrl}:`, error);
         }
-      } catch (error) {
-        console.error(`Error fetching from ${archiveUrl}:`, error);
-      }
     }
     
     // Step 4: Filter games by the exact date range (not just by month)
@@ -314,6 +322,15 @@ const downloadChessComPGN = async (
     });
     
     console.log(`Chess.com download: Found ${allGames.length} total games, ${filteredGames.length} within date range`);
+    console.log(`Date range: ${cutoffDate.toISOString()} to ${now.toISOString()}`);
+    
+    // Log game type breakdown
+    const gameTypes = filteredGames.reduce((acc, game) => {
+      const timeControl = game.time_control || 'unknown';
+      acc[timeControl] = (acc[timeControl] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    console.log('Game types found:', gameTypes);
     
     setProgress(progressSteps[progressSteps.length - 1]);
     return filteredGames;
