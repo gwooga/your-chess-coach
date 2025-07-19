@@ -26,9 +26,9 @@ export const extractRatings = (games: any[], platform: Platform, username?: stri
           
           if (timeControl.includes('bullet') || seconds < 180) {
             variant = 'bullet';
-          } else if (timeControl.includes('blitz') || (seconds >= 180 && seconds <= 900)) {
+          } else if (timeControl.includes('blitz') || (seconds >= 180 && seconds < 600)) {
             variant = 'blitz';
-          } else if (timeControl.includes('rapid') || seconds > 900) {
+          } else if (timeControl.includes('rapid') || seconds >= 600) {
             variant = 'rapid';
           }
         }

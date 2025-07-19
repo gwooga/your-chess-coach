@@ -13,11 +13,11 @@ export const analyzeOpenings = (games: any[], username: string): {
     all: games,
     blitz: games.filter(g => {
       const timeControl = g.time_control || '';
-      return timeControl.includes('blitz') || (parseInt(timeControl) >= 180 && parseInt(timeControl) <= 600);
+      return timeControl.includes('blitz') || (parseInt(timeControl) >= 180 && parseInt(timeControl) < 600);
     }),
     rapid: games.filter(g => {
       const timeControl = g.time_control || '';
-      return timeControl.includes('rapid') || (parseInt(timeControl) > 600);
+      return timeControl.includes('rapid') || (parseInt(timeControl) >= 600);
     }),
     bullet: games.filter(g => {
       const timeControl = g.time_control || '';
