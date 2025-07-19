@@ -38,16 +38,20 @@ export const analyzeChessData = async (data: {
       throw new Error("No games found for analysis");
     }
     
-    console.log(`Found ${games.length} games for analysis`);
+    // Limit games for analysis to improve performance while maintaining accuracy
+    const ANALYSIS_LIMIT = 1000;
+    const gamesToAnalyze = games.length > ANALYSIS_LIMIT ? games.slice(0, ANALYSIS_LIMIT) : games;
+    
+    console.log(`Found ${games.length} games, analyzing ${gamesToAnalyze.length} (limit: ${ANALYSIS_LIMIT})`);
     
     // Extract ratings from games
-    const ratings = extractRatings(games, info.platform, info.username);
+    const ratings = extractRatings(gamesToAnalyze, info.platform, info.username);
     
     // Analyze openings using our refactored function
-    const { openings, totalWhiteGames, totalBlackGames } = analyzeOpenings(games, info.username);
+    const { openings, totalWhiteGames, totalBlackGames } = analyzeOpenings(gamesToAnalyze, info.username);
     
     // Generate time analysis
-    const { dayPerformance, timePerformance } = generateTimeAnalysis(games, info.username);
+    const { dayPerformance, timePerformance } = generateTimeAnalysis(gamesToAnalyze, info.username);
     
     // Find best and worst time slots/days for insights
     const { bestTimeSlot, worstTimeSlot, bestDay, worstDay } = findBestAndWorstPerformances(
@@ -60,17 +64,17 @@ export const analyzeChessData = async (data: {
       opening: 68 + Math.floor(Math.random() * 10),
       middlegame: 62 + Math.floor(Math.random() * 10),
       endgame: 59 + Math.floor(Math.random() * 12),
-      totalGames: games.length
+      totalGames: gamesToAnalyze.length
     };
     
     // Create move quality data
     const moveQuality: MoveQuality = {
-      best: Math.floor(games.length * 15 + Math.random() * 10),
-      good: Math.floor(games.length * 8 + Math.random() * 10),
-      inaccuracy: Math.floor(games.length * 4 + Math.random() * 8),
-      mistake: Math.floor(games.length * 2 + Math.random() * 5),
-      blunder: Math.floor(games.length * 1 + Math.random() * 3),
-      totalMoves: Math.floor(games.length * 30 + Math.random() * 100)
+      best: Math.floor(gamesToAnalyze.length * 15 + Math.random() * 10),
+      good: Math.floor(gamesToAnalyze.length * 8 + Math.random() * 10),
+      inaccuracy: Math.floor(gamesToAnalyze.length * 4 + Math.random() * 8),
+      mistake: Math.floor(gamesToAnalyze.length * 2 + Math.random() * 5),
+      blunder: Math.floor(gamesToAnalyze.length * 1 + Math.random() * 3),
+      totalMoves: Math.floor(gamesToAnalyze.length * 30 + Math.random() * 100)
     };
     
     // Create material swings data (simplified)
@@ -121,8 +125,8 @@ export const analyzeChessData = async (data: {
       materialSwings,
       conversionRate: 65 + Math.floor(Math.random() * 20),
       timeScrambleRecord: {
-        wins: Math.floor(games.length * 0.3),
-        losses: Math.floor(games.length * 0.2)
+        wins: Math.floor(gamesToAnalyze.length * 0.3),
+        losses: Math.floor(gamesToAnalyze.length * 0.2)
       },
       strengths,
       weaknesses,

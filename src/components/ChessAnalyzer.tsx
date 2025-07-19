@@ -462,11 +462,11 @@ const ChessAnalyzer: React.FC = () => {
       {!userAnalysis ? (
         <>
           <AIProviderSwitcher />
-          <UserForm 
-            onSubmit={handleUserSubmit} 
-            onPgnUpload={handlePgnUpload}
-            isLoading={isLoading} 
-          />
+        <UserForm 
+          onSubmit={handleUserSubmit} 
+          onPgnUpload={handlePgnUpload}
+          isLoading={isLoading} 
+        />
         </>
       ) : (
         <div className="space-y-6">

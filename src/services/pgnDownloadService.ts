@@ -292,6 +292,8 @@ const downloadChessComPGN = async (
     
     // Step 3: Download PGN from each archive
     const allGames: any[] = [];
+    const GAME_LIMIT = 1000; // Stop fetching once we have 1000+ games
+    
     // Granular progress steps
     const progressSteps = [0, 12, 25, 37, 50, 63, 75, 84, 100];
     let stepIdx = 0;
@@ -300,10 +302,15 @@ const downloadChessComPGN = async (
     // Fetch all filtered archives (last 3 months worth)
     const archivesToFetch = filteredArchives;
     
-    console.log(`Fetching from ${archivesToFetch.length} Chess.com archives out of ${filteredArchives.length} available (last 3 months)`);
+    console.log(`Fetching from ${archivesToFetch.length} Chess.com archives out of ${filteredArchives.length} available (last 3 months, limit: ${GAME_LIMIT} games)`);
     
     const total = archivesToFetch.length;
     for (let i = 0; i < total; i++) {
+      // Check if we already have enough games
+      if (allGames.length >= GAME_LIMIT) {
+        console.log(`Reached game limit of ${GAME_LIMIT}, stopping fetch. Current count: ${allGames.length}`);
+        break;
+      }
       const archiveUrl = archivesToFetch[i];
       // Calculate which progress step to use
       const progressIndex = Math.min(
@@ -322,8 +329,8 @@ const downloadChessComPGN = async (
             if (pgnResponse.ok) {
               const pgnText = await pgnResponse.text();
               const games = parsePgnContent(pgnText);
-              console.log(`Archive ${archiveUrl}: ${games.length} games parsed`);
               allGames.push(...games);
+              console.log(`Archive ${archiveUrl}: ${games.length} games parsed. Total so far: ${allGames.length}`);
               success = true;
             } else {
               console.error(`Failed to fetch PGN from ${archiveUrl}: ${pgnResponse.status}`);
@@ -333,8 +340,10 @@ const downloadChessComPGN = async (
             retryCount++;
             console.error(`Error fetching from ${archiveUrl} (attempt ${retryCount}):`, error);
             if (retryCount <= maxRetries) {
-              console.log(`Retrying in 1 second...`);
+              console.log(`Retrying ${archiveUrl} in 1 second...`);
               await new Promise(resolve => setTimeout(resolve, 1000));
+            } else {
+              console.log(`Failed to fetch ${archiveUrl} after ${maxRetries} retries`);
             }
           }
         }

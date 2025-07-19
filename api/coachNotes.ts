@@ -52,12 +52,12 @@ export default async function handler(
       },
       body: JSON.stringify({
         model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: 'You are a world-class chess coach and data analyst.' },
+      messages: [
+        { role: 'system', content: 'You are a world-class chess coach and data analyst.' },
           { role: 'user', content: prompt }
-        ],
-        max_tokens: 600,
-        temperature: 0.7,
+      ],
+      max_tokens: 600,
+      temperature: 0.7,
         stream: false
       })
     });
