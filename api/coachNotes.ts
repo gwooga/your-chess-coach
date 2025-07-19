@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createCompletion } from '../src/services/aiService';
 
 function formatTableMarkdown(table: any[]): string {
   if (!table.length) return '';
@@ -45,13 +44,31 @@ export default async function handler(
   const tableMarkdown = formatTableMarkdown(table);
   const prompt = `You are a chess coach. You will be provided with:  \n\n1. A table of opening statistics for either White or Black, with columns: Opening, Sequence, Games (N), Wins (%), Draws (%), Losses (%).\n2. The student's current Elo rating (e.g. 1500, 1800).\n\nTable:\n${tableMarkdown}\n\nStudent rating: ${rating}\n\nYour task: in 4–6 bullet points, each 1–3 sentences, produce "Coach's notes" that cover:\n- Key share: why the main line matters (percent of games).\n- Result outlier: any line with win % below 45% or above 60%.\n- Actionable tip: one concrete study or repertoire tweak.\n- Optionally, a tactical motif or pawn-structure theme to drill.\n\nDo NOT repeat the phrase 'Coach's notes' or any header in your output. Output 4-6 clear bullet points, each 1-3 sentences.\n\nAdapt your language complexity to the student's rating range (rating to rating+100).`;
   try {
-    const completion = await createCompletion(
-      'You are a world-class chess coach and data analyst.',
-      prompt,
-      600,
-      0.7
-    );
-    const aiResponse = completion.content;
+    const apiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: 'You are a world-class chess coach and data analyst.' },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 600,
+        temperature: 0.7,
+        stream: false
+      })
+    });
+
+    const data = await apiResponse.json();
+    
+    if (!apiResponse.ok) {
+      throw new Error(`DeepSeek API Error: ${apiResponse.status} - ${JSON.stringify(data)}`);
+    }
+
+    const aiResponse = data.choices?.[0]?.message?.content || 'No response from AI.';
     const points = splitIntoPoints(aiResponse);
     response.status(200).json({ notes: points });
   } catch (error: any) {

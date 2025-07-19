@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createCompletion } from '../src/services/aiService';
 
 function formatTableMarkdown(table: any[]): string {
   if (!table.length) return '';
@@ -131,16 +130,40 @@ ${formattedTables}
 
 Adapt language complexity to the player's rating range. Always use second person language. Return only valid JSON.`;
 
-    console.log('Making AI API call...');
-    const completion = await createCompletion(
-      'You are a world-class chess coach and data analyst.',
-      prompt,
-      3000,
-      0.7
-    );
+    console.log('Making DeepSeek API call directly...');
+    
+    let aiResponse: string;
+    try {
+      const apiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: 'You are a world-class chess coach and data analyst.' },
+            { role: 'user', content: prompt }
+          ],
+          max_tokens: 3000,
+          temperature: 0.7,
+          stream: false
+        })
+      });
 
-    const aiResponse = completion.content;
-    console.log('AI response received, length:', aiResponse.length);
+      const data = await apiResponse.json();
+      
+      if (!apiResponse.ok) {
+        throw new Error(`DeepSeek API Error: ${apiResponse.status} - ${JSON.stringify(data)}`);
+      }
+
+      aiResponse = data.choices?.[0]?.message?.content || 'No response from AI.';
+      console.log('AI response received successfully, length:', aiResponse.length);
+    } catch (error) {
+      console.error('AI completion failed:', error);
+      throw error;
+    }
     
     let parsedResponse: any = null;
     try {
