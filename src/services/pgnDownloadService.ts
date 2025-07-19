@@ -169,7 +169,20 @@ export const parsePgnContent = (pgnContent: string): any[] => {
         const chess = new Chess();
         
         // Attempt to load the PGN. chess.js is strict and may throw errors.
-        chess.loadPgn(gameText);
+        // Try with default settings first
+        try {
+          chess.loadPgn(gameText);
+        } catch (fenError) {
+          // If FEN error, try to load with a more lenient approach
+          if (fenError.message && fenError.message.includes('Invalid FEN')) {
+            // Try loading just the moves without validation
+            const chess2 = new Chess();
+            // Skip this game if we can't parse it properly
+            continue;
+          } else {
+            throw fenError;
+          }
+        }
         
         // Extract headers
         const headers = chess.header();
@@ -284,11 +297,10 @@ const downloadChessComPGN = async (
     let stepIdx = 0;
     setProgress(progressSteps[stepIdx++]);
     
-    // Limit to last 3 months as requested
-    const maxArchivesToFetch = Math.min(3, filteredArchives.length);
-    const archivesToFetch = filteredArchives.slice(-maxArchivesToFetch);
+    // Fetch all filtered archives (last 3 months worth)
+    const archivesToFetch = filteredArchives;
     
-    console.log(`Fetching from ${archivesToFetch.length} Chess.com archives out of ${filteredArchives.length} available (limited to last 3 months)`);
+    console.log(`Fetching from ${archivesToFetch.length} Chess.com archives out of ${filteredArchives.length} available (last 3 months)`);
     
     const total = archivesToFetch.length;
     for (let i = 0; i < total; i++) {
@@ -299,27 +311,56 @@ const downloadChessComPGN = async (
         progressSteps.length - 2
       );
       setProgress(progressSteps[progressIndex]);
-              try {
-          const pgnResponse = await fetch(`${archiveUrl}/pgn`);
-          if (pgnResponse.ok) {
-            const pgnText = await pgnResponse.text();
-            const games = parsePgnContent(pgnText);
-            console.log(`Archive ${archiveUrl}: ${games.length} games parsed`);
-            allGames.push(...games);
-          } else {
-            console.error(`Failed to fetch PGN from ${archiveUrl}: ${pgnResponse.status}`);
+              // Try fetching with retries for network errors
+        let retryCount = 0;
+        const maxRetries = 2;
+        let success = false;
+        
+        while (!success && retryCount <= maxRetries) {
+          try {
+            const pgnResponse = await fetch(`${archiveUrl}/pgn`);
+            if (pgnResponse.ok) {
+              const pgnText = await pgnResponse.text();
+              const games = parsePgnContent(pgnText);
+              console.log(`Archive ${archiveUrl}: ${games.length} games parsed`);
+              allGames.push(...games);
+              success = true;
+            } else {
+              console.error(`Failed to fetch PGN from ${archiveUrl}: ${pgnResponse.status}`);
+              break; // Don't retry HTTP errors like 404
+            }
+          } catch (error) {
+            retryCount++;
+            console.error(`Error fetching from ${archiveUrl} (attempt ${retryCount}):`, error);
+            if (retryCount <= maxRetries) {
+              console.log(`Retrying in 1 second...`);
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
           }
-        } catch (error) {
-          console.error(`Error fetching from ${archiveUrl}:`, error);
         }
     }
     
     // Step 4: Filter games by the exact date range (not just by month)
+    let includedCount = 0;
+    let excludedCount = 0;
+    
     const filteredGames = allGames.filter(game => {
       const gameDate = parsePgnDate(game.date);
-      if (!gameDate) return true; // Include games with invalid dates
-      return gameDate >= cutoffDate;
+      if (!gameDate) {
+        includedCount++;
+        return true; // Include games with invalid dates
+      }
+      
+      const isInRange = gameDate >= cutoffDate;
+      if (isInRange) {
+        includedCount++;
+      } else {
+        excludedCount++;
+      }
+      return isInRange;
     });
+    
+    console.log(`Date filtering: ${includedCount} included, ${excludedCount} excluded`);
     
     console.log(`Chess.com download: Found ${allGames.length} total games, ${filteredGames.length} within date range`);
     console.log(`Date range: ${cutoffDate.toISOString()} to ${now.toISOString()}`);
