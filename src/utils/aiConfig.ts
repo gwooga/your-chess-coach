@@ -25,21 +25,24 @@ export const defaultAIConfig: AIConfig = {
   },
 };
 
-// Get current AI configuration
+// Get current AI configuration - Always use DeepSeek for now
 export const getAIConfig = (): AIConfig => {
-  // You can extend this to read from localStorage, environment variables, or user preferences
-  return defaultAIConfig;
+  // Always return DeepSeek configuration
+  return {
+    ...defaultAIConfig,
+    provider: 'deepseek'
+  };
 };
 
-// Set AI provider
+// Set AI provider - Always use DeepSeek for now
 export const setAIProvider = (provider: AIProvider) => {
-  // In a real app, you might want to save this to localStorage or a database
-  defaultAIConfig.provider = provider;
+  // Always use DeepSeek - ignore provider parameter for now
+  defaultAIConfig.provider = 'deepseek';
 };
 
-// Get current provider
+// Get current provider - Always returns DeepSeek for now
 export const getCurrentProvider = (): AIProvider => {
-  return getAIConfig().provider;
+  return 'deepseek';
 };
 
 // Get current provider's API key

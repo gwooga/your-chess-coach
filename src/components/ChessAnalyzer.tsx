@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import UserForm from './UserForm';
 import CoachTab from './CoachTab';
 import OpeningsTab from './OpeningsTab';
-import AIProviderSwitcher from './AIProviderSwitcher';
+// import AIProviderSwitcher from './AIProviderSwitcher'; // Removed - always use DeepSeek now
 import { UserInfo, TimeRange, ChessVariant, UserAnalysis, Platform } from '@/utils/types';
 import { analyzeChessData } from '@/services/chessAnalysisService';
 import { downloadPGN, parsePgnContent, filterGamesByTimeRange } from '@/services/pgnDownloadService';
@@ -461,7 +461,7 @@ const ChessAnalyzer: React.FC = () => {
       
       {!userAnalysis ? (
         <>
-          <AIProviderSwitcher />
+          {/* AIProviderSwitcher removed - always use DeepSeek now */}
         <UserForm 
           onSubmit={handleUserSubmit} 
           onPgnUpload={handlePgnUpload}

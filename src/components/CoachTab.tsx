@@ -40,7 +40,7 @@ const CoachTab: React.FC<CoachTabProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [openingsList, setOpeningsList] = useState<string[]>([]);
   const [relevantOpenings, setRelevantOpenings] = useState<string[]>([]);
-  const [showPerformanceUpgrade, setShowPerformanceUpgrade] = useState(false);
+  // const [showPerformanceUpgrade, setShowPerformanceUpgrade] = useState(false); // Removed for now
   
   const variantData = analysis.openings[variant];
   
@@ -99,29 +99,9 @@ const CoachTab: React.FC<CoachTabProps> = ({
       {/* Coach Tab Navigation */}
       <div className="mb-6">
         <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-1">
             <TabsTrigger value="summary">Coach's Summary</TabsTrigger>
-            <div 
-              className="relative"
-              onMouseEnter={() => setShowPerformanceUpgrade(true)}
-              onMouseLeave={() => setShowPerformanceUpgrade(false)}
-            >
-              <TabsTrigger 
-                value="performance" 
-                className="cursor-pointer opacity-100 hover:bg-accent hover:text-accent-foreground"
-                onClick={(e) => {
-                  e.preventDefault();
-                  // Show upgrade button instead of switching tabs
-                }}
-              >
-                Performance Analysis (Upgrade to Pro)
-              </TabsTrigger>
-              {showPerformanceUpgrade && (
-                <div className="absolute top-full left-0 mt-2 z-50">
-                  <UpgradeButton useImage={true} />
-                </div>
-              )}
-            </div>
+            {/* Performance Analysis tab removed for now - keeping CoachPerformance component for future use */}
           </TabsList>
           {/* Coach's Summary Content */}
           <TabsContent value="summary" className="mt-6">
@@ -138,12 +118,13 @@ const CoachTab: React.FC<CoachTabProps> = ({
             {/* Add the Ask Me Anything Section */}
             <ChessAdviser analysis={analysis} />
           </TabsContent>
-          {/* Performance Content */}
+          {/* Performance Content - Removed from UI for now, keeping component for future use
           <TabsContent value="performance" className="mt-6 space-y-8">
             <CoachPerformance 
               analysis={analysis}
             />
           </TabsContent>
+          */}
         </Tabs>
       </div>
     </div>
