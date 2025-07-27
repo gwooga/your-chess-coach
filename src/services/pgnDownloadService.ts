@@ -308,12 +308,6 @@ const downloadChessComPGN = async (
     
     // Process archives in parallel for better performance
     const archivePromises = archivesToFetch.map(async (archiveUrl, index) => {
-      // Check if we already have enough games
-      if (allGames.length >= GAME_LIMIT) {
-        console.log(`Reached game limit of ${GAME_LIMIT}, stopping fetch. Current count: ${allGames.length}`);
-        return [];
-      }
-
       // Calculate which progress step to use
       const progressIndex = Math.min(
         Math.floor(((index + 1) / archivesToFetch.length) * (progressSteps.length - 2)) + 1,
@@ -379,6 +373,12 @@ const downloadChessComPGN = async (
       }
       allGames.push(...games);
     });
+    
+    // Apply game limit after collection (much faster than checking during parallel execution)
+    if (allGames.length > GAME_LIMIT) {
+      console.log(`🎯 Limiting games from ${allGames.length} to ${GAME_LIMIT} for performance`);
+      allGames.splice(GAME_LIMIT); // Keep only first 1000 games
+    }
     
     console.log(`📊 Archive Summary: ${successfulArchives}/${archivesToFetch.length} successful, ${allGames.length} total games`);
     

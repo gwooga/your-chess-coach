@@ -30,7 +30,7 @@ export default async function handler(
     return response.status(403).json({ error: 'Only Chess.com URLs allowed' });
   }
 
-  console.log(`🔄 Proxying Chess.com request: ${url}`);
+  console.log(`🔄 Proxying: ${url.split('/').slice(-2).join('/')}`); // Shorter logging
 
   try {
     const chessResponse = await fetch(url, {
@@ -40,13 +40,12 @@ export default async function handler(
         'Cache-Control': 'no-cache',
       },
       redirect: 'follow',
-      signal: AbortSignal.timeout(30000) // 30 second timeout
+      signal: AbortSignal.timeout(15000) // Reduced from 30s to 15s for faster failures
     });
 
     if (!chessResponse.ok) {
-      console.error(`❌ Chess.com API error: ${chessResponse.status} for ${url}`);
+      console.error(`❌ ${chessResponse.status} for ${url.split('/').slice(-2).join('/')}`);
       const errorText = await chessResponse.text().catch(() => 'Unable to read error response');
-      console.error(`❌ Error response body: ${errorText.substring(0, 200)}`);
       
       return response.status(chessResponse.status).json({ 
         error: `Chess.com API returned ${chessResponse.status}`,
@@ -56,11 +55,11 @@ export default async function handler(
     }
 
     const content = await chessResponse.text();
-    console.log(`✅ Successfully proxied ${url}, content length: ${content.length}`);
+    console.log(`✅ ${url.split('/').slice(-2).join('/')}: ${content.length} bytes`);
     
     // Set appropriate response headers
     response.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    response.setHeader('Cache-Control', 'public, max-age=300'); // 5 min cache
+    response.setHeader('Cache-Control', 'public, max-age=600'); // Increased cache to 10 minutes
     
     return response.status(200).send(content);
     
