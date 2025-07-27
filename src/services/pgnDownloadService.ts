@@ -336,14 +336,9 @@ const downloadChessComPGN = async (
         const directUrl = archiveUrl + '/pgn';
         let pgnResponse;
         
-        // Use proxy to handle QUIC issues while maintaining performance
+        // Simple direct call exactly like yesterday before we broke it
         const fetchStart = Date.now();
-        const proxyUrl = `/api/chess-proxy?url=${encodeURIComponent(directUrl)}`;
-        pgnResponse = await fetch(proxyUrl, {
-          headers: { 
-            'User-Agent': 'Chess-Coach-App/1.0 (contact@chess-coach.xyz)'
-          }
-        });
+        pgnResponse = await fetch(directUrl);
         const fetchTime = Date.now() - fetchStart;
         
         if (pgnResponse.ok) {
