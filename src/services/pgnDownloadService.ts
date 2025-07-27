@@ -243,34 +243,29 @@ const downloadChessComPGN = async (
   setProgress: (progress: number) => void
 ): Promise<any[]> => {
   try {
-    // Step 1: Get archives - try direct first, proxy as fallback
+    // Step 1: Get archives - simplified hybrid approach
     const archivesUrl = `https://api.chess.com/pub/player/${username}/games/archives`;
     let archivesResponse;
-    let usedProxyForArchives = false;
     
     try {
-      // Direct call first - much faster
+      // Try direct first
       archivesResponse = await fetch(archivesUrl, {
-        headers: {
-          'User-Agent': 'Chess-Coach-Browser/1.0',
-          'Accept': 'application/json',
-        },
-        signal: AbortSignal.timeout(10000)
+        headers: { 'User-Agent': 'Chess-Coach-Browser/1.0' },
+        signal: AbortSignal.timeout(8000)
       });
     } catch (directError: any) {
-      // If direct call fails with QUIC or network error, use proxy
-      if (directError.message.includes('QUIC') || directError.message.includes('Failed to fetch') || directError.name === 'TypeError') {
-        console.log(`🔄 Archives direct failed, using proxy for ${username}`);
+      // Fallback to proxy only for network errors
+      if (directError.name === 'TypeError' || directError.message.includes('Failed to fetch')) {
+        console.log(`🔄 Archives direct failed, using proxy`);
         const proxyArchivesUrl = `/api/chess-proxy?url=${encodeURIComponent(archivesUrl)}`;
         archivesResponse = await fetch(proxyArchivesUrl);
-        usedProxyForArchives = true;
       } else {
         throw directError;
       }
     }
     
     if (!archivesResponse.ok) {
-      throw new Error(`Failed to fetch Chess.com archives${usedProxyForArchives ? ' via proxy' : ''} (${archivesResponse.status})`);
+      throw new Error(`Failed to fetch Chess.com archives (${archivesResponse.status})`);
     }
     
     const archivesData = await archivesResponse.json();
@@ -335,66 +330,47 @@ const downloadChessComPGN = async (
       );
       setProgress(progressSteps[progressIndex]);
 
-      // Try fetching with minimal retries for performance
-      let retryCount = 0;
-      const maxRetries = 1; // Reduced from 2 for speed
-      
-      while (retryCount <= maxRetries) {
-        try {
-          // Try direct call first (fastest), fallback to proxy if QUIC error
-          let pgnResponse;
-          let usedProxy = false;
+      // Try fetching - no retries needed for direct calls
+      const startTime = Date.now();
+      try {
+        // Simplified hybrid approach - try direct first, single fallback
+        const directUrl = archiveUrl + '/pgn';
+        let pgnResponse;
+        
+        // Try direct call with faster timeout
+        const fetchStart = Date.now();
+        // TEMPORARY: Only direct calls to test performance (like before domain change)
+        pgnResponse = await fetch(directUrl, {
+          headers: { 'User-Agent': 'Chess-Coach-Browser/1.0' },
+          signal: AbortSignal.timeout(8000)
+        });
+        const fetchTime = Date.now() - fetchStart;
+        
+        if (pgnResponse.ok) {
+          const parseStart = Date.now();
+          const pgnText = await pgnResponse.text();
+          const games = parsePgnContent(pgnText);
+          const parseTime = Date.now() - parseStart;
+          const totalTime = Date.now() - startTime;
           
-          try {
-            // Direct call first - much faster
-            pgnResponse = await fetch(archiveUrl + '/pgn', {
-              headers: {
-                'User-Agent': 'Chess-Coach-Browser/1.0',
-                'Accept': 'text/plain,application/x-chess-pgn,*/*',
-              },
-              signal: AbortSignal.timeout(10000)
-            });
-          } catch (directError: any) {
-            // If direct call fails with QUIC or network error, use proxy
-            if (directError.message.includes('QUIC') || directError.message.includes('Failed to fetch') || directError.name === 'TypeError') {
-              console.log(`🔄 Direct failed, using proxy for ${archiveUrl}`);
-              const proxyUrl = `/api/chess-proxy?url=${encodeURIComponent(archiveUrl + '/pgn')}`;
-              pgnResponse = await fetch(proxyUrl);
-              usedProxy = true;
-            } else {
-              throw directError;
-            }
-          }
-          
-          if (pgnResponse.ok) {
-            const pgnText = await pgnResponse.text();
-            const games = parsePgnContent(pgnText);
-            console.log(`Archive ${archiveUrl}: ${games.length} games${usedProxy ? ' (via proxy)' : ' (direct)'}`);
-            return games;
-          } else if (pgnResponse.status === 404 || pgnResponse.status >= 500) {
-            // Don't retry 404s (archive doesn't exist) or 500s (server errors)
-            console.log(`Archive ${archiveUrl}: No games available (${pgnResponse.status})`);
-            return [];
-          } else if (pgnResponse.status === 502 || pgnResponse.status === 504) {
-            // Handle connection terminated or timeout errors
-            console.log(`Archive ${archiveUrl}: Connection issue (${pgnResponse.status}) - likely too many games or server busy`);
-            return [];
-          } else {
-            console.error(`Failed to fetch PGN from ${archiveUrl} via proxy: ${pgnResponse.status}`);
-            return [];
-          }
-        } catch (error) {
-          retryCount++;
-          if (retryCount <= maxRetries) {
-            console.log(`Retrying ${archiveUrl} via proxy (attempt ${retryCount})...`);
-            await new Promise(resolve => setTimeout(resolve, 500)); // Reduced delay
-          } else {
-            console.log(`Failed to fetch ${archiveUrl} via proxy after ${maxRetries} retries`);
-            return [];
-          }
+          console.log(`Archive ${archiveUrl}: ${games.length} games - Fetch: ${fetchTime}ms, Parse: ${parseTime}ms, Total: ${totalTime}ms`);
+          return games;
+        } else if (pgnResponse.status === 404 || pgnResponse.status >= 500) {
+          // Don't retry permanent errors
+          console.log(`Archive ${archiveUrl}: No games available (${pgnResponse.status})`);
+          return [];
+        } else if (pgnResponse.status === 502 || pgnResponse.status === 504) {
+          // Handle connection terminated or timeout errors
+          console.log(`Archive ${archiveUrl}: Connection issue (${pgnResponse.status})`);
+          return [];
+        } else {
+          console.error(`Failed to fetch PGN from ${archiveUrl}: ${pgnResponse.status}`);
+          return [];
         }
+      } catch (error) {
+        console.log(`Failed to fetch ${archiveUrl}: ${(error as Error).message}`);
+        return [];
       }
-      return [];
     });
 
     // Wait for all archives to complete and combine results
