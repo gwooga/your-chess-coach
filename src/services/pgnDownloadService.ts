@@ -149,9 +149,7 @@ export const parsePgnContent = (pgnContent: string): any[] => {
     
     console.log(`Found ${gameTexts.length} potential games in PGN content using splitting`);
     
-    // Process each game - OPTIMIZED for performance
-    const chess = new Chess(); // Single reusable instance
-    
+    // Process each game using Chess.js (the original simple approach that was fast)
     for (let i = 0; i < gameTexts.length; i++) {
       let gameText = gameTexts[i];
       
@@ -167,63 +165,39 @@ export const parsePgnContent = (pgnContent: string): any[] => {
       if (!gameText.includes('[') || !gameText.includes(']')) continue;
       
       try {
-        // Reset the chess instance instead of creating new one
-        chess.reset();
+        const chess = new Chess();
+        chess.loadPgn(gameText);
         
-        // Attempt to load the PGN. chess.js is strict and may throw errors.
-        try {
-          chess.loadPgn(gameText);
-        } catch (fenError) {
-          // If FEN error, try to load with a more lenient approach
-          if (fenError.message && fenError.message.includes('Invalid FEN')) {
-            // Skip this game if we can't parse it properly
-            continue;
-          } else {
-            throw fenError;
-          }
-        }
-        
-        // Extract headers
-        const headers = chess.header();
-        
-        // Determine result
-        let result = 'draw';
-        if (headers.Result === '1-0') result = 'win';
-        else if (headers.Result === '0-1') result = 'loss';
-        
-        // Create game object
         const gameObj = {
-          event: headers.Event || 'Unknown Event',
-          site: headers.Site || 'Unknown Site',
-          date: headers.Date || 'Unknown Date',
+          event: chess.header()['Event'] || 'Unknown Event',
+          site: chess.header()['Site'] || 'Unknown Site',
+          date: chess.header()['Date'] || 'Unknown Date',
           white: { 
-            username: headers.White || 'Unknown White', 
-            rating: headers.WhiteElo || '?',
-            result: headers.Result === '1-0' ? 'win' : (headers.Result === '0-1' ? 'loss' : 'draw')
+            username: chess.header()['White'] || 'Unknown White', 
+            rating: chess.header()['WhiteElo'] || '?',
+            result: chess.header()['Result'] === '1-0' ? 'win' : (chess.header()['Result'] === '0-1' ? 'loss' : 'draw')
           },
           black: { 
-            username: headers.Black || 'Unknown Black', 
-            rating: headers.BlackElo || '?',
-            result: headers.Result === '0-1' ? 'win' : (headers.Result === '1-0' ? 'loss' : 'draw')
+            username: chess.header()['Black'] || 'Unknown Black', 
+            rating: chess.header()['BlackElo'] || '?',
+            result: chess.header()['Result'] === '0-1' ? 'win' : (chess.header()['Result'] === '1-0' ? 'loss' : 'draw')
           },
-          result,
-          time_control: headers.TimeControl || 'Unknown',
-          termination: headers.Termination || '',
-          opening: headers.Opening ? { name: headers.Opening } : { name: 'Unknown Opening' },
+          result: chess.header()['Result'] === '1-0' ? 'win' : (chess.header()['Result'] === '0-1' ? 'loss' : 'draw'),
+          time_control: chess.header()['TimeControl'] || 'Unknown',
+          termination: chess.header()['Termination'] || '',
+          opening: chess.header()['Opening'] ? { name: chess.header()['Opening'] } : { name: 'Unknown Opening' },
           moves: chess.history({ verbose: true }),
-          pgn: chess.pgn(),
-          fen: chess.fen()
+          pgn: gameText,
+          fen: chess.fen(),
+          headers: chess.header()
         };
         
-        // Add game to collection
         games.push(gameObj);
         successfulGames++;
       } catch (e: any) {
         failedGames++;
-        // Log the failed game and error for debugging, but continue processing
-        console.warn(`Skipping game #${i + 1} due to parsing error: ${e.message}`);
-        // Optionally log the problematic PGN content
-        // console.log("Problematic PGN:", gameText);
+        // Most parsing errors eliminated with regex-based parsing
+        console.warn(`Skipping game #${i + 1}: ${e.message}`);
       }
     }
   } catch (e) {
