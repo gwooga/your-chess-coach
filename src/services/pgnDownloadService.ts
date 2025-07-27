@@ -306,52 +306,67 @@ const downloadChessComPGN = async (
     
     console.log(`Fetching from ${archivesToFetch.length} Chess.com archives out of ${filteredArchives.length} available (last 3 months, limit: ${GAME_LIMIT} games)`);
     
-    const total = archivesToFetch.length;
-    for (let i = 0; i < total; i++) {
+    // Process archives in parallel for better performance
+    const archivePromises = archivesToFetch.map(async (archiveUrl, index) => {
       // Check if we already have enough games
       if (allGames.length >= GAME_LIMIT) {
         console.log(`Reached game limit of ${GAME_LIMIT}, stopping fetch. Current count: ${allGames.length}`);
-        break;
+        return [];
       }
-      const archiveUrl = archivesToFetch[i];
+
       // Calculate which progress step to use
       const progressIndex = Math.min(
-        Math.floor(((i + 1) / total) * (progressSteps.length - 2)) + 1,
+        Math.floor(((index + 1) / archivesToFetch.length) * (progressSteps.length - 2)) + 1,
         progressSteps.length - 2
       );
       setProgress(progressSteps[progressIndex]);
-              // Try fetching with retries for network errors
-        let retryCount = 0;
-        const maxRetries = 2;
-        let success = false;
-        
-        while (!success && retryCount <= maxRetries) {
-          try {
-            // Use proxy to avoid QUIC protocol errors with Chess.com
-            const proxyUrl = `/api/chess-proxy?url=${encodeURIComponent(archiveUrl + '/pgn')}`;
-            const pgnResponse = await fetch(proxyUrl);
-            if (pgnResponse.ok) {
-              const pgnText = await pgnResponse.text();
-              const games = parsePgnContent(pgnText);
-              allGames.push(...games);
-              console.log(`Archive ${archiveUrl}: ${games.length} games parsed. Total so far: ${allGames.length}`);
-              success = true;
-            } else {
-              console.error(`Failed to fetch PGN from ${archiveUrl} via proxy: ${pgnResponse.status}`);
-              break; // Don't retry HTTP errors like 404
-            }
-          } catch (error) {
-            retryCount++;
-            console.error(`Error fetching from ${archiveUrl} via proxy (attempt ${retryCount}):`, error);
-            if (retryCount <= maxRetries) {
-              console.log(`Retrying ${archiveUrl} via proxy in 1 second...`);
-              await new Promise(resolve => setTimeout(resolve, 1000));
-            } else {
-              console.log(`Failed to fetch ${archiveUrl} via proxy after ${maxRetries} retries`);
-            }
+
+      // Try fetching with minimal retries for performance
+      let retryCount = 0;
+      const maxRetries = 1; // Reduced from 2 for speed
+      
+      while (retryCount <= maxRetries) {
+        try {
+          // Use proxy to avoid QUIC protocol errors with Chess.com
+          const proxyUrl = `/api/chess-proxy?url=${encodeURIComponent(archiveUrl + '/pgn')}`;
+          const pgnResponse = await fetch(proxyUrl);
+          
+          if (pgnResponse.ok) {
+            const pgnText = await pgnResponse.text();
+            const games = parsePgnContent(pgnText);
+            console.log(`Archive ${archiveUrl}: ${games.length} games parsed`);
+            return games;
+          } else if (pgnResponse.status === 404 || pgnResponse.status >= 500) {
+            // Don't retry 404s (archive doesn't exist) or 500s (server errors)
+            console.log(`Archive ${archiveUrl}: No games available (${pgnResponse.status})`);
+            return [];
+          } else {
+            console.error(`Failed to fetch PGN from ${archiveUrl} via proxy: ${pgnResponse.status}`);
+            return [];
+          }
+        } catch (error) {
+          retryCount++;
+          if (retryCount <= maxRetries) {
+            console.log(`Retrying ${archiveUrl} via proxy (attempt ${retryCount})...`);
+            await new Promise(resolve => setTimeout(resolve, 500)); // Reduced delay
+          } else {
+            console.log(`Failed to fetch ${archiveUrl} via proxy after ${maxRetries} retries`);
+            return [];
           }
         }
-    }
+      }
+      return [];
+    });
+
+    // Wait for all archives to complete and combine results
+    const archiveResults = await Promise.all(archivePromises);
+    
+    // Combine all games and show totals
+    archiveResults.forEach((games) => {
+      allGames.push(...games);
+    });
+    
+    console.log(`All archives processed. Total games collected: ${allGames.length}`);
     
     // Step 4: Filter games by the exact date range (not just by month)
     let includedCount = 0;
