@@ -149,7 +149,9 @@ export const parsePgnContent = (pgnContent: string): any[] => {
     
     console.log(`Found ${gameTexts.length} potential games in PGN content using splitting`);
     
-    // Process each game - ULTRA FAST parsing (skip Chess.js for most data)
+    // Process each game - OPTIMIZED for performance
+    const chess = new Chess(); // Single reusable instance
+    
     for (let i = 0; i < gameTexts.length; i++) {
       let gameText = gameTexts[i];
       
@@ -165,37 +167,24 @@ export const parsePgnContent = (pgnContent: string): any[] => {
       if (!gameText.includes('[') || !gameText.includes(']')) continue;
       
       try {
-        // FAST PARSING: Extract headers directly without Chess.js
-        const headers: Record<string, string> = {};
-        const headerMatches = gameText.match(/\[(\w+)\s+"([^"]+)"\]/g);
+        // Reset the chess instance instead of creating new one
+        chess.reset();
         
-        if (headerMatches) {
-          headerMatches.forEach(match => {
-            const headerMatch = match.match(/\[(\w+)\s+"([^"]+)"\]/);
-            if (headerMatch) {
-              headers[headerMatch[1]] = headerMatch[2];
-            }
-          });
-        }
-        
-        // Extract moves section (everything after headers)
-        const movesMatch = gameText.match(/\]\s*\n\s*(.+)$/s);
-        const movesText = movesMatch ? movesMatch[1].trim() : '';
-        
-        // Only use Chess.js if we need move validation (we usually don't for basic analysis)
-        let moves: any[] = [];
-        let fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'; // starting position
-        
-        // Quick move extraction without full validation
-        if (movesText) {
-          // Extract move notation quickly
-          const movePattern = /\d+\.+\s*([NBRQK]?[a-h]?[1-8]?x?[a-h][1-8](?:=[NBRQ])?[+#]?)\s*([NBRQK]?[a-h]?[1-8]?x?[a-h][1-8](?:=[NBRQ])?[+#]?)?/g;
-          let moveMatch;
-          while ((moveMatch = movePattern.exec(movesText)) !== null) {
-            if (moveMatch[1]) moves.push({ san: moveMatch[1] });
-            if (moveMatch[2]) moves.push({ san: moveMatch[2] });
+        // Attempt to load the PGN. chess.js is strict and may throw errors.
+        try {
+          chess.loadPgn(gameText);
+        } catch (fenError) {
+          // If FEN error, try to load with a more lenient approach
+          if (fenError.message && fenError.message.includes('Invalid FEN')) {
+            // Skip this game if we can't parse it properly
+            continue;
+          } else {
+            throw fenError;
           }
         }
+        
+        // Extract headers
+        const headers = chess.header();
         
         // Determine result
         let result = 'draw';
@@ -221,10 +210,9 @@ export const parsePgnContent = (pgnContent: string): any[] => {
           time_control: headers.TimeControl || 'Unknown',
           termination: headers.Termination || '',
           opening: headers.Opening ? { name: headers.Opening } : { name: 'Unknown Opening' },
-          moves: moves,
-          pgn: gameText,
-          fen: fen,
-          headers: headers
+          moves: chess.history({ verbose: true }),
+          pgn: chess.pgn(),
+          fen: chess.fen()
         };
         
         // Add game to collection
@@ -232,8 +220,10 @@ export const parsePgnContent = (pgnContent: string): any[] => {
         successfulGames++;
       } catch (e: any) {
         failedGames++;
-        // Most parsing errors eliminated with regex-based parsing
-        console.warn(`Skipping game #${i + 1}: ${e.message}`);
+        // Log the failed game and error for debugging, but continue processing
+        console.warn(`Skipping game #${i + 1} due to parsing error: ${e.message}`);
+        // Optionally log the problematic PGN content
+        // console.log("Problematic PGN:", gameText);
       }
     }
   } catch (e) {
