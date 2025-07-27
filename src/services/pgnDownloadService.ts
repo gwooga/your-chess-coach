@@ -340,6 +340,10 @@ const downloadChessComPGN = async (
             // Don't retry 404s (archive doesn't exist) or 500s (server errors)
             console.log(`Archive ${archiveUrl}: No games available (${pgnResponse.status})`);
             return [];
+          } else if (pgnResponse.status === 502 || pgnResponse.status === 504) {
+            // Handle connection terminated or timeout errors
+            console.log(`Archive ${archiveUrl}: Connection issue (${pgnResponse.status}) - likely too many games or server busy`);
+            return [];
           } else {
             console.error(`Failed to fetch PGN from ${archiveUrl} via proxy: ${pgnResponse.status}`);
             return [];
@@ -362,11 +366,21 @@ const downloadChessComPGN = async (
     const archiveResults = await Promise.all(archivePromises);
     
     // Combine all games and show totals
-    archiveResults.forEach((games) => {
+    let successfulArchives = 0;
+    let failedArchives = 0;
+    
+    archiveResults.forEach((games, index) => {
+      if (games.length > 0) {
+        successfulArchives++;
+        console.log(`✅ Archive ${archivesToFetch[index]}: ${games.length} games`);
+      } else {
+        failedArchives++;
+        console.log(`❌ Archive ${archivesToFetch[index]}: Failed or empty`);
+      }
       allGames.push(...games);
     });
     
-    console.log(`All archives processed. Total games collected: ${allGames.length}`);
+    console.log(`📊 Archive Summary: ${successfulArchives}/${archivesToFetch.length} successful, ${allGames.length} total games`);
     
     // Step 4: Filter games by the exact date range (not just by month)
     let includedCount = 0;

@@ -39,7 +39,8 @@ export default async function handler(
         'Accept': 'text/plain,application/x-chess-pgn,*/*',
         'Cache-Control': 'no-cache',
       },
-      redirect: 'follow' // Follow redirects automatically
+      redirect: 'follow',
+      signal: AbortSignal.timeout(30000) // 30 second timeout
     });
 
     if (!chessResponse.ok) {
@@ -65,9 +66,26 @@ export default async function handler(
     
   } catch (error: any) {
     console.error('❌ Chess.com proxy error:', error.message);
+    
+    // Handle specific error types
+    if (error.name === 'AbortError' || error.message.includes('timeout')) {
+      return response.status(504).json({ 
+        error: 'Request timeout - Chess.com archive may be too large',
+        details: 'This archive might contain too many games. Try a different time range.',
+        url: url
+      });
+    } else if (error.message.includes('terminated') || error.message.includes('ECONNRESET')) {
+      return response.status(502).json({ 
+        error: 'Connection terminated by Chess.com',
+        details: 'Chess.com closed the connection. This archive may be unavailable or too large.',
+        url: url
+      });
+    }
+    
     return response.status(500).json({ 
       error: 'Failed to fetch from Chess.com via proxy',
-      details: error.message 
+      details: error.message,
+      url: url
     });
   }
 }
