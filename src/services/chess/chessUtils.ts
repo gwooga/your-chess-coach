@@ -32,7 +32,7 @@ export const pgnToFen = (moves: string): string => {
         try {
           chess.move(move);
         } catch (moveError) {
-          console.error(`Invalid move: ${move} in sequence: ${moves}`);
+          // Skip invalid moves silently to avoid console spam from malformed games
           break;
         }
       }
