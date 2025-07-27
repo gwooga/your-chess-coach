@@ -243,14 +243,34 @@ const downloadChessComPGN = async (
   setProgress: (progress: number) => void
 ): Promise<any[]> => {
   try {
-    // Step 1: Get archives
+    // Step 1: Get archives - try direct first, proxy as fallback
     const archivesUrl = `https://api.chess.com/pub/player/${username}/games/archives`;
-    // Use proxy to avoid QUIC protocol errors with Chess.com
-    const proxyArchivesUrl = `/api/chess-proxy?url=${encodeURIComponent(archivesUrl)}`;
-    const archivesResponse = await fetch(proxyArchivesUrl);
+    let archivesResponse;
+    let usedProxyForArchives = false;
+    
+    try {
+      // Direct call first - much faster
+      archivesResponse = await fetch(archivesUrl, {
+        headers: {
+          'User-Agent': 'Chess-Coach-Browser/1.0',
+          'Accept': 'application/json',
+        },
+        signal: AbortSignal.timeout(10000)
+      });
+    } catch (directError: any) {
+      // If direct call fails with QUIC or network error, use proxy
+      if (directError.message.includes('QUIC') || directError.message.includes('Failed to fetch') || directError.name === 'TypeError') {
+        console.log(`🔄 Archives direct failed, using proxy for ${username}`);
+        const proxyArchivesUrl = `/api/chess-proxy?url=${encodeURIComponent(archivesUrl)}`;
+        archivesResponse = await fetch(proxyArchivesUrl);
+        usedProxyForArchives = true;
+      } else {
+        throw directError;
+      }
+    }
     
     if (!archivesResponse.ok) {
-      throw new Error(`Failed to fetch Chess.com archives via proxy (${archivesResponse.status})`);
+      throw new Error(`Failed to fetch Chess.com archives${usedProxyForArchives ? ' via proxy' : ''} (${archivesResponse.status})`);
     }
     
     const archivesData = await archivesResponse.json();
@@ -321,14 +341,35 @@ const downloadChessComPGN = async (
       
       while (retryCount <= maxRetries) {
         try {
-          // Use proxy to avoid QUIC protocol errors with Chess.com
-          const proxyUrl = `/api/chess-proxy?url=${encodeURIComponent(archiveUrl + '/pgn')}`;
-          const pgnResponse = await fetch(proxyUrl);
+          // Try direct call first (fastest), fallback to proxy if QUIC error
+          let pgnResponse;
+          let usedProxy = false;
+          
+          try {
+            // Direct call first - much faster
+            pgnResponse = await fetch(archiveUrl + '/pgn', {
+              headers: {
+                'User-Agent': 'Chess-Coach-Browser/1.0',
+                'Accept': 'text/plain,application/x-chess-pgn,*/*',
+              },
+              signal: AbortSignal.timeout(10000)
+            });
+          } catch (directError: any) {
+            // If direct call fails with QUIC or network error, use proxy
+            if (directError.message.includes('QUIC') || directError.message.includes('Failed to fetch') || directError.name === 'TypeError') {
+              console.log(`🔄 Direct failed, using proxy for ${archiveUrl}`);
+              const proxyUrl = `/api/chess-proxy?url=${encodeURIComponent(archiveUrl + '/pgn')}`;
+              pgnResponse = await fetch(proxyUrl);
+              usedProxy = true;
+            } else {
+              throw directError;
+            }
+          }
           
           if (pgnResponse.ok) {
             const pgnText = await pgnResponse.text();
             const games = parsePgnContent(pgnText);
-            console.log(`Archive ${archiveUrl}: ${games.length} games parsed`);
+            console.log(`Archive ${archiveUrl}: ${games.length} games${usedProxy ? ' (via proxy)' : ' (direct)'}`);
             return games;
           } else if (pgnResponse.status === 404 || pgnResponse.status >= 500) {
             // Don't retry 404s (archive doesn't exist) or 500s (server errors)
