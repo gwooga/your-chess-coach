@@ -245,10 +245,12 @@ const downloadChessComPGN = async (
   try {
     // Step 1: Get archives
     const archivesUrl = `https://api.chess.com/pub/player/${username}/games/archives`;
-    const archivesResponse = await fetch(archivesUrl);
+    // Use proxy to avoid QUIC protocol errors with Chess.com
+    const proxyArchivesUrl = `/api/chess-proxy?url=${encodeURIComponent(archivesUrl)}`;
+    const archivesResponse = await fetch(proxyArchivesUrl);
     
     if (!archivesResponse.ok) {
-      throw new Error(`Failed to fetch Chess.com archives (${archivesResponse.status})`);
+      throw new Error(`Failed to fetch Chess.com archives via proxy (${archivesResponse.status})`);
     }
     
     const archivesData = await archivesResponse.json();
@@ -325,7 +327,9 @@ const downloadChessComPGN = async (
         
         while (!success && retryCount <= maxRetries) {
           try {
-            const pgnResponse = await fetch(`${archiveUrl}/pgn`);
+            // Use proxy to avoid QUIC protocol errors with Chess.com
+            const proxyUrl = `/api/chess-proxy?url=${encodeURIComponent(archiveUrl + '/pgn')}`;
+            const pgnResponse = await fetch(proxyUrl);
             if (pgnResponse.ok) {
               const pgnText = await pgnResponse.text();
               const games = parsePgnContent(pgnText);
@@ -333,17 +337,17 @@ const downloadChessComPGN = async (
               console.log(`Archive ${archiveUrl}: ${games.length} games parsed. Total so far: ${allGames.length}`);
               success = true;
             } else {
-              console.error(`Failed to fetch PGN from ${archiveUrl}: ${pgnResponse.status}`);
+              console.error(`Failed to fetch PGN from ${archiveUrl} via proxy: ${pgnResponse.status}`);
               break; // Don't retry HTTP errors like 404
             }
           } catch (error) {
             retryCount++;
-            console.error(`Error fetching from ${archiveUrl} (attempt ${retryCount}):`, error);
+            console.error(`Error fetching from ${archiveUrl} via proxy (attempt ${retryCount}):`, error);
             if (retryCount <= maxRetries) {
-              console.log(`Retrying ${archiveUrl} in 1 second...`);
+              console.log(`Retrying ${archiveUrl} via proxy in 1 second...`);
               await new Promise(resolve => setTimeout(resolve, 1000));
             } else {
-              console.log(`Failed to fetch ${archiveUrl} after ${maxRetries} retries`);
+              console.log(`Failed to fetch ${archiveUrl} via proxy after ${maxRetries} retries`);
             }
           }
         }

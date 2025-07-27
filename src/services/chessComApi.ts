@@ -7,13 +7,16 @@ const BASE_URL = 'https://api.chess.com/pub';
 // Fetch user profile data
 export const fetchChessComProfile = async (username: string): Promise<any> => {
   try {
-    const response = await fetch(`${BASE_URL}/player/${username}`);
+    // Use proxy to avoid QUIC protocol errors with Chess.com
+    const profileUrl = `${BASE_URL}/player/${username}`;
+    const proxyUrl = `/api/chess-proxy?url=${encodeURIComponent(profileUrl)}`;
+    const response = await fetch(proxyUrl);
     if (!response.ok) {
-      throw new Error(`Failed to fetch Chess.com profile: ${response.status}`);
+      throw new Error(`Failed to fetch Chess.com profile via proxy: ${response.status}`);
     }
     return await response.json();
   } catch (error) {
-    console.error('Error fetching Chess.com profile:', error);
+    console.error('Error fetching Chess.com profile via proxy:', error);
     throw error;
   }
 };
@@ -21,13 +24,16 @@ export const fetchChessComProfile = async (username: string): Promise<any> => {
 // Fetch user stats data
 export const fetchChessComStats = async (username: string): Promise<any> => {
   try {
-    const response = await fetch(`${BASE_URL}/player/${username}/stats`);
+    // Use proxy to avoid QUIC protocol errors with Chess.com
+    const statsUrl = `${BASE_URL}/player/${username}/stats`;
+    const proxyUrl = `/api/chess-proxy?url=${encodeURIComponent(statsUrl)}`;
+    const response = await fetch(proxyUrl);
     if (!response.ok) {
-      throw new Error(`Failed to fetch Chess.com stats: ${response.status}`);
+      throw new Error(`Failed to fetch Chess.com stats via proxy: ${response.status}`);
     }
     return await response.json();
   } catch (error) {
-    console.error('Error fetching Chess.com stats:', error);
+    console.error('Error fetching Chess.com stats via proxy:', error);
     throw error;
   }
 };
@@ -35,14 +41,17 @@ export const fetchChessComStats = async (username: string): Promise<any> => {
 // Fetch user game archives
 export const fetchChessComGameArchives = async (username: string): Promise<string[]> => {
   try {
-    const response = await fetch(`${BASE_URL}/player/${username}/games/archives`);
+    // Use proxy to avoid QUIC protocol errors with Chess.com
+    const archivesUrl = `${BASE_URL}/player/${username}/games/archives`;
+    const proxyUrl = `/api/chess-proxy?url=${encodeURIComponent(archivesUrl)}`;
+    const response = await fetch(proxyUrl);
     if (!response.ok) {
-      throw new Error(`Failed to fetch Chess.com game archives: ${response.status}`);
+      throw new Error(`Failed to fetch Chess.com game archives via proxy: ${response.status}`);
     }
     const data = await response.json();
     return data.archives;
   } catch (error) {
-    console.error('Error fetching Chess.com game archives:', error);
+    console.error('Error fetching Chess.com game archives via proxy:', error);
     throw error;
   }
 };
@@ -50,13 +59,15 @@ export const fetchChessComGameArchives = async (username: string): Promise<strin
 // Fetch games from a specific archive
 export const fetchChessComGames = async (archiveUrl: string): Promise<any> => {
   try {
-    const response = await fetch(archiveUrl);
+    // Use proxy to avoid QUIC protocol errors with Chess.com
+    const proxyUrl = `/api/chess-proxy?url=${encodeURIComponent(archiveUrl)}`;
+    const response = await fetch(proxyUrl);
     if (!response.ok) {
-      throw new Error(`Failed to fetch Chess.com games: ${response.status}`);
+      throw new Error(`Failed to fetch Chess.com games via proxy: ${response.status}`);
     }
     return await response.json();
   } catch (error) {
-    console.error(`Error fetching Chess.com games from ${archiveUrl}:`, error);
+    console.error(`Error fetching Chess.com games from ${archiveUrl} via proxy:`, error);
     throw error;
   }
 };
