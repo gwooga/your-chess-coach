@@ -336,10 +336,18 @@ const downloadChessComPGN = async (
         const directUrl = archiveUrl + '/pgn';
         let pgnResponse;
         
-        // Use proxy for all calls to avoid QUIC issues
+        // Direct calls like yesterday (before domain change broke everything)
         const fetchStart = Date.now();
-        const proxyUrl = `/api/chess-proxy?url=${encodeURIComponent(directUrl)}`;
-        pgnResponse = await fetch(proxyUrl);
+        pgnResponse = await fetch(directUrl, {
+          headers: { 
+            'User-Agent': 'Chess-Coach-App/1.0 (https://your-chess-coach.vercel.app)',
+            'Accept': 'application/x-chess-pgn,text/plain,*/*',
+            'Cache-Control': 'no-cache',
+            'Origin': 'https://your-chess-coach.vercel.app',
+            'Referer': 'https://your-chess-coach.vercel.app'
+          },
+          signal: AbortSignal.timeout(15000)
+        });
         const fetchTime = Date.now() - fetchStart;
         
         if (pgnResponse.ok) {
