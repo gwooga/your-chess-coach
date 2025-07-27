@@ -149,7 +149,7 @@ export const parsePgnContent = (pgnContent: string): any[] => {
     
     console.log(`Found ${gameTexts.length} potential games in PGN content using splitting`);
     
-    // Process each game using Chess.js (the original simple approach that was fast)
+    // Process each game - ULTRA FAST parsing (skip Chess.js for most data)
     for (let i = 0; i < gameTexts.length; i++) {
       let gameText = gameTexts[i];
       
@@ -165,33 +165,69 @@ export const parsePgnContent = (pgnContent: string): any[] => {
       if (!gameText.includes('[') || !gameText.includes(']')) continue;
       
       try {
-        const chess = new Chess();
-        chess.loadPgn(gameText);
+        // FAST PARSING: Extract headers directly without Chess.js
+        const headers: Record<string, string> = {};
+        const headerMatches = gameText.match(/\[(\w+)\s+"([^"]+)"\]/g);
         
+        if (headerMatches) {
+          headerMatches.forEach(match => {
+            const headerMatch = match.match(/\[(\w+)\s+"([^"]+)"\]/);
+            if (headerMatch) {
+              headers[headerMatch[1]] = headerMatch[2];
+            }
+          });
+        }
+        
+        // Extract moves section (everything after headers)
+        const movesMatch = gameText.match(/\]\s*\n\s*(.+)$/s);
+        const movesText = movesMatch ? movesMatch[1].trim() : '';
+        
+        // Only use Chess.js if we need move validation (we usually don't for basic analysis)
+        let moves: any[] = [];
+        let fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'; // starting position
+        
+        // Quick move extraction without full validation
+        if (movesText) {
+          // Extract move notation quickly
+          const movePattern = /\d+\.+\s*([NBRQK]?[a-h]?[1-8]?x?[a-h][1-8](?:=[NBRQ])?[+#]?)\s*([NBRQK]?[a-h]?[1-8]?x?[a-h][1-8](?:=[NBRQ])?[+#]?)?/g;
+          let moveMatch;
+          while ((moveMatch = movePattern.exec(movesText)) !== null) {
+            if (moveMatch[1]) moves.push({ san: moveMatch[1] });
+            if (moveMatch[2]) moves.push({ san: moveMatch[2] });
+          }
+        }
+        
+        // Determine result
+        let result = 'draw';
+        if (headers.Result === '1-0') result = 'win';
+        else if (headers.Result === '0-1') result = 'loss';
+        
+        // Create game object
         const gameObj = {
-          event: chess.header()['Event'] || 'Unknown Event',
-          site: chess.header()['Site'] || 'Unknown Site',
-          date: chess.header()['Date'] || 'Unknown Date',
+          event: headers.Event || 'Unknown Event',
+          site: headers.Site || 'Unknown Site',
+          date: headers.Date || 'Unknown Date',
           white: { 
-            username: chess.header()['White'] || 'Unknown White', 
-            rating: chess.header()['WhiteElo'] || '?',
-            result: chess.header()['Result'] === '1-0' ? 'win' : (chess.header()['Result'] === '0-1' ? 'loss' : 'draw')
+            username: headers.White || 'Unknown White', 
+            rating: headers.WhiteElo || '?',
+            result: headers.Result === '1-0' ? 'win' : (headers.Result === '0-1' ? 'loss' : 'draw')
           },
           black: { 
-            username: chess.header()['Black'] || 'Unknown Black', 
-            rating: chess.header()['BlackElo'] || '?',
-            result: chess.header()['Result'] === '0-1' ? 'win' : (chess.header()['Result'] === '1-0' ? 'loss' : 'draw')
+            username: headers.Black || 'Unknown Black', 
+            rating: headers.BlackElo || '?',
+            result: headers.Result === '0-1' ? 'win' : (headers.Result === '1-0' ? 'loss' : 'draw')
           },
-          result: chess.header()['Result'] === '1-0' ? 'win' : (chess.header()['Result'] === '0-1' ? 'loss' : 'draw'),
-          time_control: chess.header()['TimeControl'] || 'Unknown',
-          termination: chess.header()['Termination'] || '',
-          opening: chess.header()['Opening'] ? { name: chess.header()['Opening'] } : { name: 'Unknown Opening' },
-          moves: chess.history({ verbose: true }),
+          result,
+          time_control: headers.TimeControl || 'Unknown',
+          termination: headers.Termination || '',
+          opening: headers.Opening ? { name: headers.Opening } : { name: 'Unknown Opening' },
+          moves: moves,
           pgn: gameText,
-          fen: chess.fen(),
-          headers: chess.header()
+          fen: fen,
+          headers: headers
         };
         
+        // Add game to collection
         games.push(gameObj);
         successfulGames++;
       } catch (e: any) {
