@@ -308,17 +308,17 @@ const downloadChessComPGN = async (
     
     // Step 3: Download PGN from each archive
     const allGames: any[] = [];
-    const GAME_LIMIT = 1000; // Stop fetching once we have 1000+ games
+    const GAME_LIMIT = 800; // Reduced limit for better performance
     
     // Granular progress steps
     const progressSteps = [0, 12, 25, 37, 50, 63, 75, 84, 100];
     let stepIdx = 0;
     setProgress(progressSteps[stepIdx++]);
     
-    // Fetch all filtered archives (last 3 months worth)
+    // Fetch archives in order, processing partial downloads from heavy users
     const archivesToFetch = filteredArchives;
     
-    console.log(`Fetching from ${archivesToFetch.length} Chess.com archives out of ${filteredArchives.length} available (last 3 months, limit: ${GAME_LIMIT} games)`);
+    console.log(`Fetching from ${archivesToFetch.length} Chess.com archives out of ${filteredArchives.length} available (limit: ${GAME_LIMIT} games)`);
     
     // Process archives in parallel for better performance
     const archivePromises = archivesToFetch.map(async (archiveUrl, index) => {
@@ -347,7 +347,24 @@ const downloadChessComPGN = async (
         
         if (pgnResponse.ok) {
           const parseStart = Date.now();
-          const pgnText = await pgnResponse.text();
+          let pgnText;
+          try {
+            pgnText = await pgnResponse.text();
+          } catch (textError: any) {
+            // Handle partial downloads due to connection termination
+            if (textError.message.includes('terminated') || textError.message.includes('aborted')) {
+              console.log(`📦 Archive ${archiveUrl}: Got partial data before termination - parsing what we received`);
+              // Try to get whatever data was received
+              pgnText = pgnResponse.body ? await new Response(pgnResponse.body).text() : '';
+              if (!pgnText) {
+                console.log(`❌ Archive ${archiveUrl}: No partial data available`);
+                return [];
+              }
+            } else {
+              throw textError;
+            }
+          }
+          
           const games = parsePgnContent(pgnText);
           const parseTime = Date.now() - parseStart;
           const totalTime = Date.now() - startTime;
@@ -359,15 +376,22 @@ const downloadChessComPGN = async (
           console.log(`Archive ${archiveUrl}: No games available (${pgnResponse.status})`);
           return [];
         } else if (pgnResponse.status === 502 || pgnResponse.status === 504) {
-          // Handle connection terminated or timeout errors
-          console.log(`Archive ${archiveUrl}: Connection issue (${pgnResponse.status})`);
+          // Handle connection terminated or timeout errors (common for heavy users)
+          console.log(`🚫 Archive ${archiveUrl}: Heavy user protection triggered (${pgnResponse.status}) - skipping this archive`);
           return [];
         } else {
           console.error(`Failed to fetch PGN from ${archiveUrl}: ${pgnResponse.status}`);
           return [];
         }
-      } catch (error) {
-        console.log(`Failed to fetch ${archiveUrl}: ${(error as Error).message}`);
+      } catch (error: any) {
+        // Handle network errors gracefully for heavy users
+        if (error.name === 'AbortError' || error.message.includes('timeout')) {
+          console.log(`⏱️ Archive ${archiveUrl}: Timeout (heavy user archive) - skipped`);
+        } else if (error.message.includes('terminated') || error.message.includes('ECONNRESET')) {
+          console.log(`🚫 Archive ${archiveUrl}: Connection terminated (heavy user protection) - skipped`);
+        } else {
+          console.log(`❌ Archive ${archiveUrl}: ${error.message}`);
+        }
         return [];
       }
     });
@@ -397,6 +421,11 @@ const downloadChessComPGN = async (
     }
     
     console.log(`📊 Archive Summary: ${successfulArchives}/${archivesToFetch.length} successful, ${allGames.length} total games`);
+    
+    // If we didn't get enough games and there are more archives available, log suggestion
+    if (allGames.length < 200 && filteredArchives.length > archivesToFetch.length) {
+      console.log(`💡 Low game count (${allGames.length}). Heavy user archives may be protected by Chess.com. Consider extending time range.`);
+    }
     
     // Step 4: Filter games by the exact date range (not just by month)
     let includedCount = 0;
