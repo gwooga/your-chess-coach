@@ -149,7 +149,9 @@ export const parsePgnContent = (pgnContent: string): any[] => {
     
     console.log(`Found ${gameTexts.length} potential games in PGN content using splitting`);
     
-    // Process each game
+    // Process each game - OPTIMIZED for performance
+    const chess = new Chess(); // Single reusable instance
+    
     for (let i = 0; i < gameTexts.length; i++) {
       let gameText = gameTexts[i];
       
@@ -165,18 +167,15 @@ export const parsePgnContent = (pgnContent: string): any[] => {
       if (!gameText.includes('[') || !gameText.includes(']')) continue;
       
       try {
-        // Create a new Chess instance for each game
-        const chess = new Chess();
+        // Reset the chess instance instead of creating new one
+        chess.reset();
         
         // Attempt to load the PGN. chess.js is strict and may throw errors.
-        // Try with default settings first
         try {
           chess.loadPgn(gameText);
         } catch (fenError) {
           // If FEN error, try to load with a more lenient approach
           if (fenError.message && fenError.message.includes('Invalid FEN')) {
-            // Try loading just the moves without validation
-            const chess2 = new Chess();
             // Skip this game if we can't parse it properly
             continue;
           } else {
