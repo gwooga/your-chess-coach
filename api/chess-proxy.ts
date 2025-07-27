@@ -23,9 +23,11 @@ export default async function handler(
     return response.status(400).json({ error: 'URL parameter required' });
   }
 
-  // Security: Only allow Chess.com API URLs
-  if (!url.startsWith('https://api.chess.com/pub/player/')) {
-    return response.status(403).json({ error: 'Only Chess.com player API URLs allowed' });
+  // Security: Only allow Chess.com API URLs (including redirected domains)
+  if (!url.startsWith('https://api.chess.com/') && 
+      !url.includes('chess.com') && 
+      !url.includes('chesscomfiles.com')) {
+    return response.status(403).json({ error: 'Only Chess.com URLs allowed' });
   }
 
   console.log(`🔄 Proxying Chess.com request: ${url}`);
@@ -36,13 +38,19 @@ export default async function handler(
         'User-Agent': 'Chess-Coach-Server/1.0 (chess-coach.xyz)',
         'Accept': 'text/plain,application/x-chess-pgn,*/*',
         'Cache-Control': 'no-cache',
-      }
+      },
+      redirect: 'follow' // Follow redirects automatically
     });
 
     if (!chessResponse.ok) {
       console.error(`❌ Chess.com API error: ${chessResponse.status} for ${url}`);
+      const errorText = await chessResponse.text().catch(() => 'Unable to read error response');
+      console.error(`❌ Error response body: ${errorText.substring(0, 200)}`);
+      
       return response.status(chessResponse.status).json({ 
-        error: `Chess.com API returned ${chessResponse.status}` 
+        error: `Chess.com API returned ${chessResponse.status}`,
+        url: url,
+        details: errorText.substring(0, 500)
       });
     }
 
@@ -62,4 +70,4 @@ export default async function handler(
       details: error.message 
     });
   }
-} 
+}
