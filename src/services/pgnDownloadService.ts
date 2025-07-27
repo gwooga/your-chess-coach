@@ -340,11 +340,7 @@ const downloadChessComPGN = async (
         const fetchStart = Date.now();
         pgnResponse = await fetch(directUrl, {
           headers: { 
-            'User-Agent': 'Chess-Coach-App/1.0 (https://your-chess-coach.vercel.app)',
-            'Accept': 'application/x-chess-pgn,text/plain,*/*',
-            'Cache-Control': 'no-cache',
-            'Origin': 'https://your-chess-coach.vercel.app',
-            'Referer': 'https://your-chess-coach.vercel.app'
+            'User-Agent': 'Chess-Coach-App/1.0 (contact@chess-coach.xyz)'
           },
           signal: AbortSignal.timeout(15000)
         });
