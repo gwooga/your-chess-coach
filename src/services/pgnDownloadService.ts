@@ -1,5 +1,6 @@
 import { TimeRange, Platform } from '../utils/types';
 import { Chess } from 'chess.js';
+import { track } from '@vercel/analytics';
 
 // Convert period formats
 const convertTimeRangeToPeriod = (timeRange: TimeRange): string => {
@@ -523,12 +524,48 @@ export const downloadPGN = async (
   timeRange: TimeRange,
   setProgress: (progress: number) => void
 ): Promise<any[]> => {
-  if (platform === 'chess.com') {
-    return downloadChessComPGN(username, timeRange, setProgress);
-  } else if (platform === 'lichess') {
-    return downloadLichessPGN(username, timeRange, setProgress);
-  } else {
-    // For uploaded files, return an empty array since we handle them separately
-    return [];
+  // Track analysis start
+  console.log(`🎯 ANALYSIS STARTED: ${username} (${platform}) at ${new Date().toISOString()}`);
+  track('Analysis Started', { 
+    username: username,
+    platform: platform,
+    timeRange: timeRange,
+    timestamp: new Date().toISOString()
+  });
+
+  try {
+    let games: any[] = [];
+    
+    if (platform === 'chess.com') {
+      games = await downloadChessComPGN(username, timeRange, setProgress);
+    } else if (platform === 'lichess') {
+      games = await downloadLichessPGN(username, timeRange, setProgress);
+    } else {
+      // For uploaded files, return an empty array since we handle them separately
+      games = [];
+    }
+    
+    // Track analysis completion
+    console.log(`✅ ANALYSIS COMPLETED: ${username} (${platform}) - ${games.length} games analyzed`);
+    track('Analysis Completed', { 
+      username: username,
+      platform: platform,
+      timeRange: timeRange,
+      gamesAnalyzed: games.length,
+      timestamp: new Date().toISOString()
+    });
+    
+    return games;
+  } catch (error) {
+    // Track analysis failure
+    console.error(`❌ ANALYSIS FAILED: ${username} (${platform}) - ${error}`);
+    track('Analysis Failed', { 
+      username: username,
+      platform: platform,
+      timeRange: timeRange,
+      error: String(error),
+      timestamp: new Date().toISOString()
+    });
+    throw error;
   }
 };

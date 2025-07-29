@@ -156,12 +156,6 @@ export const fetchChessComData = async (userInfo: UserInfo, timeRange: TimeRange
       description: `Successfully analyzed ${allGames.length} games from Chess.com!`,
     });
     
-    return {
-      profile,
-      stats,
-      games: allGames,
-    };
-    
     // Log successful analysis completion
     console.log(`✅ ANALYSIS COMPLETED: ${username} - Games analyzed successfully`);
     
@@ -172,6 +166,12 @@ export const fetchChessComData = async (userInfo: UserInfo, timeRange: TimeRange
       gamesAnalyzed: allGames.length,
       timestamp: new Date().toISOString()
     });
+
+    return {
+      profile,
+      stats,
+      games: allGames,
+    };
     
   } catch (error) {
     console.error('Error in fetchChessComData:', error);
