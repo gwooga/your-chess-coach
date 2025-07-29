@@ -1,4 +1,5 @@
 import { toast } from '../hooks/use-toast';
+import { track } from '@vercel/analytics';
 import { UserInfo, TimeRange } from '../utils/types';
 
 // Chess.com API endpoints
@@ -118,6 +119,13 @@ export const fetchChessComData = async (userInfo: UserInfo, timeRange: TimeRange
     // Log user analysis for tracking
     console.log(`🎯 ANALYSIS STARTED: ${username} at ${new Date().toISOString()}`);
     
+    // Track analysis start with Vercel Analytics
+    track('Analysis Started', { 
+      username: username,
+      platform: 'chess.com',
+      timestamp: new Date().toISOString()
+    });
+    
     toast({
       title: "Fetching Chess.com data",
       description: `Analyzing ${username}'s Chess.com games...`,
@@ -156,6 +164,14 @@ export const fetchChessComData = async (userInfo: UserInfo, timeRange: TimeRange
     
     // Log successful analysis completion
     console.log(`✅ ANALYSIS COMPLETED: ${username} - Games analyzed successfully`);
+    
+    // Track analysis completion with Vercel Analytics
+    track('Analysis Completed', { 
+      username: username,
+      platform: 'chess.com',
+      gamesAnalyzed: allGames.length,
+      timestamp: new Date().toISOString()
+    });
     
   } catch (error) {
     console.error('Error in fetchChessComData:', error);

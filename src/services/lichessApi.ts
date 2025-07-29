@@ -1,3 +1,5 @@
+import { track } from '@vercel/analytics';
+
 export type TimeRange = 'last30' | 'last90' | 'last180' | 'last365' | 'all';
 
 const BASE_URL = 'https://lichess.org/api';
@@ -53,11 +55,30 @@ export async function fetchLichessData(
   username: string,
   timeRange: TimeRange = 'all'
 ) {
+  // Track analysis start
+  console.log(`🎯 LICHESS ANALYSIS STARTED: ${username} at ${new Date().toISOString()}`);
+  track('Analysis Started', { 
+    username: username,
+    platform: 'lichess',
+    timeRange: timeRange,
+    timestamp: new Date().toISOString()
+  });
+  
   // run calls in parallel
   const [profile, games] = await Promise.all([
     fetchLichessProfile(username),
     fetchLichessGames(username, timeRange)
   ]);
+  
+  // Track analysis completion
+  console.log(`✅ LICHESS ANALYSIS COMPLETED: ${username} - Games fetched successfully`);
+  track('Analysis Completed', { 
+    username: username,
+    platform: 'lichess',
+    timeRange: timeRange,
+    timestamp: new Date().toISOString()
+  });
+  
   return { profile, games };
 }
 
