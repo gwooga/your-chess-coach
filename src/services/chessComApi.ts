@@ -115,6 +115,9 @@ export const fetchChessComData = async (userInfo: UserInfo, timeRange: TimeRange
   const username = userInfo.username;
   
   try {
+    // Log user analysis for tracking
+    console.log(`🎯 ANALYSIS STARTED: ${username} at ${new Date().toISOString()}`);
+    
     toast({
       title: "Fetching Chess.com data",
       description: `Analyzing ${username}'s Chess.com games...`,
@@ -150,6 +153,10 @@ export const fetchChessComData = async (userInfo: UserInfo, timeRange: TimeRange
       stats,
       games: allGames,
     };
+    
+    // Log successful analysis completion
+    console.log(`✅ ANALYSIS COMPLETED: ${username} - Games analyzed successfully`);
+    
   } catch (error) {
     console.error('Error in fetchChessComData:', error);
     toast({
